@@ -5,7 +5,7 @@ description = "Default template for PDM package"
 authors = [
     {name = "Ivan Shebanov", email = "vanamokanov8@gmail.com"},
 ]
-dependencies = ["sqlalchemy>=2.0.44"]
+dependencies = ["sqlalchemy>=2.0.44", "alembic>=1.17.0", "dotenv>=0.9.9", "psycopg[binary]>=3.2.11"]
 requires-python = "==3.12.*"
 readme = "README.md"
 license = {text = "MIT"}
@@ -13,3 +13,8 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.pdm.scripts]
+run = "python ./db_service/main.py"
+makemig = "alembic revision --autogenerate -m \"{initial migration}\""
+migrate = "alembic upgrade head"
