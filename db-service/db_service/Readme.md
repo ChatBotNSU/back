@@ -1,5 +1,5 @@
 # Db-Service
-babuba labuda
+babuda labuda
 ### How to run
 1. Very important to run migrations first in case you haven't run the service before
 2. Start postgres with ``docker compose up --build db``
@@ -9,7 +9,7 @@ pdm run makemig
 pdm run migrate
 ```
 4. Now you can start up the application with
-```
+``` 
 docker compose down
 docker compose --build
 ```

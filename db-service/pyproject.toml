@@ -15,6 +15,6 @@ license = {text = "MIT"}
 distribution = false
 
 [tool.pdm.scripts]
-run = "python ./db_service/main.py"
+start = "python ./db_service/main.py"
 makemig = "alembic revision --autogenerate -m \"{initial migration}\""
 migrate = "alembic upgrade head"

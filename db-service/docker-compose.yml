@@ -2,7 +2,7 @@ version: "3.9"
 services:
   db:
     image: postgres:16
-    container_name: my_postgres
+    container_name: db_postgres
     env_file:
       - .env
     volumes:
@@ -10,23 +10,14 @@ services:
     ports:
       - "5432:5432"
 
-  # migrations:
-  #   build: .
-  #   container_name: my_migrations
-  #   depends_on:
-  #     - db
-  #   env_file:
-  #     - .env
-  #   command: ["pdm", "run", "python", "-m", "myapp.migrations"]
-
   app:
     build: .
-    container_name: my_app
+    container_name: db-service
     depends_on:
       - db
     env_file:
       - .env
-    command: ["pdm", "run", "python", "-m", "myapp.main"]
+    command: ["pdm", "run", "start"]
 
 volumes:
   pg_data:
