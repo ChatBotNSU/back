@@ -5,7 +5,7 @@ description = "Default template for PDM package"
 authors = [
     {name = "Ivan Shebanov", email = "vanamokanov8@gmail.com"},
 ]
-dependencies = ["sqlalchemy>=2.0.44", "alembic>=1.17.0", "dotenv>=0.9.9", "psycopg[binary]>=3.2.11"]
+dependencies = ["sqlalchemy>=2.0.44", "alembic>=1.17.0", "dotenv>=0.9.9", "psycopg[binary]>=3.2.11", "uvicorn>=0.38.0", "pwdlib[argon2]>=0.3.0", "fastapi>=0.120.0", "pydantic[email]>=2.12.3"]
 requires-python = "==3.12.*"
 readme = "README.md"
 license = {text = "MIT"}
@@ -15,6 +15,9 @@ license = {text = "MIT"}
 distribution = false
 
 [tool.pdm.scripts]
-start = "python ./db_service/main.py"
+serve.cmd = "uvicorn db_service.main:app --host 0.0.0.0 --port 8000 --reload"
+serve.env = {PYTHONPATH = "db_service"}
+populate_whitelist.cmd = "python ./db_service/scripts/whitelist_user.py"
+populate_whitelist.env = {PYTHONPATH = "db_service"}
 makemig = "alembic revision --autogenerate -m \"{initial migration}\""
 migrate = "alembic upgrade head"

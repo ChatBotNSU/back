@@ -1,14 +1,13 @@
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi import APIRouter, Depends
 
-from entities.Token import Token, TokenData
-from utils.password import verify_password, get_password_hash
+from entities.Token import Token
+from utils.password import verify_password
 from utils.token import create_access_token
-from api.middleware import get_current_active_user
 from db.user_request import get_user
 from entities.User import User
 from config import get_config
@@ -18,7 +17,7 @@ router = APIRouter()
 
 
 async def authenticate_user(username: str, password: str) -> User | None:
-    user = await get_user(username=username)
+    user = await get_user(email=username)
     if not user:
         return None
     if not verify_password(password, user.hashed_password):

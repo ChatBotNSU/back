@@ -5,7 +5,7 @@ description = "Default template for PDM package"
 authors = [
     {name = "Ivan Shebanov", email = "vanamokanov8@gmail.com"},
 ]
-dependencies = ["fastapi>=0.120.0", "pyjwt>=2.10.1", "pwdlib[argon2]>=0.3.0", "pydantic>=2.12.3", "uvicorn>=0.38.0", "python-multipart>=0.0.20", "dotenv>=0.9.9"]
+dependencies = ["fastapi>=0.120.0", "pyjwt>=2.10.1", "pwdlib[argon2]>=0.3.0", "pydantic>=2.12.3", "uvicorn>=0.38.0", "python-multipart>=0.0.20", "dotenv>=0.9.9", "httpx>=0.28.1"]
 requires-python = "==3.12.*"
 readme = "README.md"
 license = {text = "MIT"}

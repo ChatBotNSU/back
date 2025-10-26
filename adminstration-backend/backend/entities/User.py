@@ -7,8 +7,6 @@ class User(BaseModel):
     name: str
     email: str
     hashed_password: str
-    refresh_token: str
-    disabled: bool = True
 
 class UserHashedPassword(BaseModel):
     hashed_password: str

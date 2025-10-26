@@ -17,7 +17,20 @@ services:
       - db
     env_file:
       - .env
-    command: ["pdm", "run", "start"]
+    ports:
+      - "9000:8000"
+    command: ["pdm", "run", "serve"]
+
+  populate_whitelist:
+    build: .
+    container_name: populate_whitelist
+    depends_on:
+      - db
+    env_file:
+      - .env
+    profiles:
+      - optional
+    command: ["pdm", "run", "populate_whitelist"]
 
 volumes:
   pg_data:

@@ -7,7 +7,7 @@
 
     "db_service": {
         "host": "localhost",
-        "port": 27017
+        "port": 9000
     },
 
     "authentication": {
