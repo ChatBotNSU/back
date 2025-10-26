@@ -11,10 +11,11 @@ from utils.token import create_access_token
 from api.middleware import get_current_active_user
 from db.user_request import get_user
 from entities.User import User
+from config import get_config
 
+config = get_config()
 router = APIRouter()
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 async def authenticate_user(username: str, password: str) -> User | None:
     user = await get_user(username=username)
@@ -35,7 +36,7 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=config.authentication.access_token_expiration_minutes)
     access_token = create_access_token(
         data={"sub": user.name}, expires_delta=access_token_expires
     )

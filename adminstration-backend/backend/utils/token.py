@@ -10,11 +10,9 @@ from pydantic import BaseModel
 
 from entities.Token import Token, TokenData
 from utils.password import verify_password, get_password_hash
+from config import get_config
 
-
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-ALGORITHM = "HS256"
-
+config = get_config()
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
@@ -22,5 +20,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, config.authentication.secret_key,
+                            algorithm=config.authentication.algorithm)
     return encoded_jwt
