@@ -3,13 +3,8 @@ from .dialogue.prompt import PromptProcessor
 from .dialogue.choice import ChoiceProcessor
 from .control.condition import ConditionProcessor
 from .control.loop import LoopProcessor
-from .control.switch import SwitchProcessor
 from .data.set_var import SetVarProcessor
 from .data.answer import AnswerProcessor
-from .flow.subflow import SubflowProcessor
-from .flow.exit import ExitProcessor
-from .flow.start import StartProcessor
-from .flow.command import CommandProcessor
 from .flow.wait import WaitProcessor
 from .script.script import ScriptProcessor
 
@@ -26,13 +21,8 @@ class ProcessorFactory:
                     ChoiceProcessor,
                     ConditionProcessor,
                     LoopProcessor,
-                    SwitchProcessor,
                     SetVarProcessor,
                     AnswerProcessor,
-                    SubflowProcessor,
-                    ExitProcessor,
-                    StartProcessor,
-                    CommandProcessor,
                     WaitProcessor,
                     ScriptProcessor
                 ]
