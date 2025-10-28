@@ -1,3 +1,3 @@
 from .script import ScriptProcessor
 
-__all__ = ["ScriptProcessor"]
+__all__ = [ScriptProcessor]
