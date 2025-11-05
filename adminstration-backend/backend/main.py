@@ -5,6 +5,7 @@ from api.middleware import get_current_active_user
 from entities.User import User
 
 from api.auth import router as auth_router
+from api.graph import router as graph_router
 
 # to get a string like this run:
 # openssl rand -hex 32
@@ -13,6 +14,7 @@ from api.auth import router as auth_router
 
 app = FastAPI()
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(graph_router, prefix="/api/v1/graph", tags=["graph"])
 
 @app.get("/users/me/", response_model=User)
 async def read_users_me(

@@ -1,6 +1,7 @@
 import enum
+from datetime import datetime, timezone
 
-from sqlalchemy import Enum, ForeignKey
+from sqlalchemy import Enum, ForeignKey, DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, MappedColumn, relationship
 
 
@@ -16,6 +17,16 @@ class User(Base):
     hashed_password: Mapped[str] = MappedColumn(nullable=False)
     chatbots: Mapped[list["ChatBot"]] = relationship(back_populates="user")
     refresh_token: Mapped[str] = MappedColumn(nullable=True)
+
+
+class Graph(Base):
+    __tablename__ = "graphs"
+
+    id: Mapped[int] = MappedColumn(primary_key=True)
+    name: Mapped[str] = MappedColumn(nullable=False)
+    s3_path: Mapped[str] = MappedColumn(nullable=True)
+    created_at: Mapped[datetime] = MappedColumn(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = MappedColumn(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class TelegramExecutionStatusEnum(enum.Enum):
