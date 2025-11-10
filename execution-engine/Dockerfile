@@ -8,5 +8,6 @@ COPY pyproject.toml pdm.lock ./
 RUN pdm install --prod --no-editable
 
 COPY ./src ./src
+COPY .env .env
 
 ENV PYTHONPATH=/app/src

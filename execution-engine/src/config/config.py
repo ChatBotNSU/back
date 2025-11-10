@@ -5,6 +5,9 @@ import os
 from pathlib import Path
 from pydantic import BaseModel, ValidationError 
 
+from dotenv import load_dotenv
+load_dotenv()
+
 class DatabaseServiceConfig(BaseModel):
     host: str
     port: int
@@ -23,10 +26,12 @@ class RedisConfig(BaseModel):
 class S3Config(BaseModel):
     host: str
     port: int
+    user: str
+    password: str
 
 class AppConfig(BaseModel):
     redis: RedisConfig
-    #s3: S3Config
+    s3: S3Config
     #db_service: DatabaseServiceConfig
 
 
@@ -39,6 +44,10 @@ def load_config(path: str | Path) -> AppConfig:
         data = json.load(f)
     
     try:
+        data["s3"]["user"] = os.getenv("MINIO_ROOT_USER")
+        data["s3"]["password"] = os.getenv("MINIO_ROOT_PASSWORD")
+        if data["s3"]["user"] is None or data["s3"]["password"] is None:
+            raise ValidationError("Please setup MINIO_ROOT_USER and MINIO_ROOT_PASSWORD in .env file")
         cfg = AppConfig(**data)
     except ValidationError as e:
         print("Ошибка валидации конфига:")

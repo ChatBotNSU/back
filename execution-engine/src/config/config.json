@@ -8,5 +8,9 @@
             "group": "execution_group",
             "consumer": "execution_consumer"
         }
+    },
+    "s3": {
+        "host": "minio",
+        "port": 9000
     }
 }
