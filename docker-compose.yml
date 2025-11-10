@@ -1,36 +1,87 @@
 services:
+  db:
+    image: postgres:16
+    container_name: db_postgres
+    env_file:
+      - db-service/.env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - db_network
+
+  db_service:
+    build: db-service
+    container_name: db-service
+    depends_on:
+      - db
+    env_file:
+      - db-service/.env
+    networks:
+      - db_network
+      - internal_network
+    command: ["pdm", "run", "serve"]
+
+  populate_whitelist:
+    build: db-service
+    container_name: populate_whitelist
+    depends_on:
+      - db
+    env_file:
+      - db-service/.env
+    profiles:
+      - optional
+    networks:
+      - db_network
+    command: ["pdm", "run", "populate_whitelist"]
+  
+  administration_backend:
+    build: administration-backend
+    container_name: administration-backend
+    depends_on:
+      - db_service
+    ports:
+      - "8080:8000"
+    networks:
+      - internal_network
+    command: ["pdm", "run", "serve"]
+
+  execution_engine:
+    build: execution-engine
+    container_name: execution-engine
+    depends_on:
+      - db_service
+    networks:
+      - internal_network
+    command: ["pdm", "run", "serve"]
+
   redis:
-    image: redis:7-alpine
-    container_name: bot-engine-redis
+    image: redis:7
+    container_name: redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks:
+      - internal_network
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   minio:
     image: minio/minio:latest
-    container_name: bot-engine-minio
-    ports:
-      - "9100:9000"    # API порт - используем 9100 вместо 9000
-      - "9101:9001"    # Console порт - используем 9101 вместо 9001
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+    container_name: minio
+    command: server /data --console-address ":9001"
+    env_file:
+      - minio-service/.env
     volumes:
       - minio_data:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
+    networks:
+      - internal_network
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    
 volumes:
-  redis_data:
-  minio_data:
+  pg_data:
+
+networks:
+  db_network:
+  internal_network:
