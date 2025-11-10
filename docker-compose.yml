@@ -52,6 +52,7 @@ services:
     container_name: execution-engine
     depends_on:
       - db_service
+      - redis
     networks:
       - internal_network
     command: ["pdm", "run", "serve"]
@@ -81,6 +82,7 @@ services:
     
 volumes:
   pg_data:
+  minio_data:
 
 networks:
   db_network:

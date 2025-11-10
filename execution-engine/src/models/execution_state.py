@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from .message import InMessage, OutMessage
+
 
 class ExecutionState(BaseModel):
     '''
@@ -9,21 +11,6 @@ class ExecutionState(BaseModel):
     chat_id: int # if of the chat being executed
     executing_node_id: int # if of the node being executed
     variable_values: dict[str, str|int]
-
-
-
-class Message(BaseModel):
-    text: str | None # text of the message
-    images: list[str] | None # paths to the images
-    audios: list[str] | None # paths to the audios
-    files: list[str] | None # paths to the files
-
-class InMessage(Message):
-    restart_command: bool # flag showing if the message is a restart command
-
-class OutMessage(Message):
-    choise_options: list[str] | None # if set then choise options (buttons with messages to send) should be set for user in telegram. 
-
 
 
 class RunTimeExecutionState(ExecutionState):

@@ -3,29 +3,31 @@ from typing import Literal, Union
 import os
 
 from pathlib import Path
-from pydantic import BaseModel, ValidationError
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
+from pydantic import BaseModel, ValidationError 
 
 class DatabaseServiceConfig(BaseModel):
     host: str
     port: int
-    type: 
 
-class RedisConfig(BaseModel):
-    host: str
-    port: int
+class RedisStreamConfig(BaseModel):
     stream_requests: str
     stream_responses: str
     group: str
     consumer: str
 
+class RedisConfig(BaseModel):
+    host: str
+    port: int
+    IOStream: RedisStreamConfig
+
+class S3Config(BaseModel):
+    host: str
+    port: int
+
 class AppConfig(BaseModel):
     redis: RedisConfig
-    s3: 
+    #s3: S3Config
+    #db_service: DatabaseServiceConfig
 
 
 def load_config(path: str | Path) -> AppConfig:
@@ -36,12 +38,7 @@ def load_config(path: str | Path) -> AppConfig:
     with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
     
-
     try:
-        data["authentication"]["secret_key"] = os.getenv("AUTH_SECRET_KEY")
-        if data is None:
-            raise ValidationError("Please setup SECRET_KEY in .env file")
-
         cfg = AppConfig(**data)
     except ValidationError as e:
         print("Ошибка валидации конфига:")
