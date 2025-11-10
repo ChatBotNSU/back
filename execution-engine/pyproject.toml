@@ -1,0 +1,19 @@
+[project]
+name = "execution-engine"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Ivan Shebanov", email = "vanamokanov8@gmail.com"},
+]
+dependencies = ["redis>=7.0.1"]
+requires-python = "==3.12.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.scripts]
+serve.cmd = "python src/main.py"
+serve.env = {PYTHONPATH = "src"}
