@@ -14,7 +14,7 @@ license = {text = "MIT"}
 [tool.pdm]
 distribution = false
 
-[tool.pdm.scripts]
+[tool.pdm.scripts]  
 serve.cmd = "uvicorn db_service.main:app --host 0.0.0.0 --port 8000 --reload"
 serve.env = {PYTHONPATH = "db_service"}
 populate_whitelist.cmd = "python ./db_service/scripts/whitelist_user.py"

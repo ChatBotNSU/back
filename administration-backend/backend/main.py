@@ -6,10 +6,6 @@ from entities.User import User
 
 from api.auth import router as auth_router
 
-# to get a string like this run:
-# openssl rand -hex 32
-
-
 
 app = FastAPI()
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])

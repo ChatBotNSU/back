@@ -4,10 +4,9 @@
         "port": 8080
     },
 
-
     "db_service": {
-        "host": "localhost",
-        "port": 9000
+        "host": "db_service",
+        "port": 8000
     },
 
     "authentication": {

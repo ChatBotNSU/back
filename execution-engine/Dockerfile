@@ -7,7 +7,7 @@ RUN pip install pdm
 COPY pyproject.toml pdm.lock ./
 RUN pdm install --prod --no-editable
 
-COPY ./db_service ./db_service
+COPY ./src ./src
 COPY .env .env
 
-ENV PYTHONPATH=/app/db_service
+ENV PYTHONPATH=/app/src
