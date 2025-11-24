@@ -32,7 +32,7 @@ class ChatBot(Base):
 class Execution(Base):
     __tablename__ = "executions"
 
-    id: Mapped[int] = MappedColumn(primary_key=True)
+    id: Mapped[str] = MappedColumn(primary_key=True)
     chatbot_id: Mapped[int] = MappedColumn(ForeignKey("chat_bots.id"))
     chatbot: Mapped["ChatBot"] = MappedColumn(back_populates="executions")
     executing_node_id: Mapped[int] = MappedColumn(nullable=False)

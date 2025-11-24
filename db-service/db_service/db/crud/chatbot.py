@@ -27,3 +27,11 @@ async def delete_chatbot(session: AsyncSession, name: str, user_id: int):
         await session.commit()
         return True
     return False
+
+async def update_chatbot(session: AsyncSession, name: str, user_id: int, desc: str):
+    bot = await session.execute(select(ChatBot).where(ChatBot.name == name and ChatBot.user_id == user_id))
+    if bot:
+        bot.description = desc
+        await session.commit()
+        await session.refresh(bot)
+    return bot
