@@ -217,32 +217,40 @@ def run(req: RunRequest, resp: Response) -> dict:
     }
 
     if p.is_alive():
-        p.terminate(); p.join()
+        try:
+            p.terminate()
+            p.join(0.5)
+            if p.is_alive():
+                p.kill()
+                p.join()
+        finally:
+            return {
+                "job_id": req.job_id,
+                "metrics": {"wall_ms": wall_ms},
+                "status": "TIMEOUT",
+                "error": {"type": "TimeoutError", "message": "Execution exceeded timeout", "traceback": ""},
+                "logs": {"stdout": "", "stderr": ""}
+            }
+    msg = parent.recv()
+    if len(msg) == 7:
+        status, err, out, errout, out_vars, added, removed = msg
         body.update({
-            "status": "TIMEOUT",
-            "error": {"type": "TimeoutError", "message": "Execution exceeded timeout", "traceback": ""},
-            "logs": {"stdout": "", "stderr": ""}
+            "status": status,
+            "variables": out_vars if status=="OK" else req.variables,
+            "added_variables": added if status=="OK" else {},
+            "removed_variables": removed if status=="OK" else [],
+            "error": err,
+            "logs": {"stdout": out, "stderr": errout}
         })
     else:
-        msg = parent.recv()
-        if len(msg) == 7:
-            status, err, out, errout, out_vars, added, removed = msg
-            body.update({
-                "status": status,
-                "variables": out_vars if status=="OK" else req.variables,
-                "added_variables": added if status=="OK" else {},
-                "removed_variables": removed if status=="OK" else [],
-                "error": err,
-                "logs": {"stdout": out, "stderr": errout}
-            })
-        else:
-            status, err, out, errout = msg
-            body.update({
-                "status": status,
-                "error": err,
-                "logs": {"stdout": out, "stderr": errout}
-            })
+        status, err, out, errout = msg
+        body.update({
+            "status": status,
+            "error": err,
+            "logs": {"stdout": out, "stderr": errout}
+        })
     return body
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)
