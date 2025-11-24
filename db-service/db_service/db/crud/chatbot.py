@@ -11,8 +11,8 @@ async def create_chatbot(session: AsyncSession, name: str, description: str, use
     return bot
 
 
-async def get_chatbot(session: AsyncSession, bot_id: int):
-    return await session.get(ChatBot, bot_id)
+async def get_chatbot(session: AsyncSession, name: str, user_id: int):
+    return await session.execute(select(ChatBot).where(ChatBot.name == name and ChatBot.user_id == user_id))
 
 
 async def list_chatbots_by_user(session: AsyncSession, user_id: int):
@@ -20,8 +20,8 @@ async def list_chatbots_by_user(session: AsyncSession, user_id: int):
     return result.scalars().all()
 
 
-async def delete_chatbot(session: AsyncSession, bot_id: int):
-    bot = await session.get(ChatBot, bot_id)
+async def delete_chatbot(session: AsyncSession, name: str, user_id: int):
+    bot = await session.execute(select(ChatBot).where(ChatBot.name == name and ChatBot.user_id == user_id))
     if bot:
         await session.delete(bot)
         await session.commit()
