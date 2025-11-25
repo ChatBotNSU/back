@@ -3,8 +3,14 @@ from sqlalchemy import select
 from db.orm_models import ChatBot
 
 
-async def create_chatbot(session: AsyncSession, name: str, description: str, user_id: int):
-    bot = ChatBot(name=name, description=description, user_id=user_id)
+async def create_chatbot(
+        session: AsyncSession,
+        name: str,
+        description: str,
+        user_id: int,
+        key: str,
+):
+    bot = ChatBot(name=name, description=description, user_id=user_id, key=key)
     session.add(bot)
     await session.commit()
     await session.refresh(bot)

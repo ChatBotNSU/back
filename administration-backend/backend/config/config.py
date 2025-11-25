@@ -12,6 +12,13 @@ class ServerConfig(BaseModel):
     host: str
     port: int
 
+class MinioConfig(BaseModel):
+    host: str
+    port: int
+    access_key: str
+    secret_key: str
+    bucket_name: str
+
 class DatabaseServiceConfig(BaseModel):
     host: str
     port: int
@@ -26,6 +33,7 @@ class AppConfig(BaseModel):
     server: ServerConfig
     db_service: DatabaseServiceConfig
     authentication: AuthenticationConfig
+    minio: MinioConfig
 
 
 def load_config(path: str | Path) -> AppConfig:

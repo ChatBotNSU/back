@@ -12,5 +12,13 @@
     "authentication": {
         "algorithm": "HS256",
         "access_token_expiration_minutes": 30
+    },
+
+    "minio": {
+        "host": "minio",
+        "port": 9000,
+        "access_key": "minioadmin",
+        "secret_key": "minioadmin", 
+        "bucket_name": "json-bucket"
     }
 }

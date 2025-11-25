@@ -12,7 +12,9 @@ async def create_chatbot_endpoint(
     chatbot: ChatBotCreate,
     session: AsyncSession = Depends(get_session)
 ):
-    new_chatbot = await create_chatbot(session, chatbot.name, chatbot.description, chatbot.user_id)
+    new_chatbot = await create_chatbot(
+        session, chatbot.name, chatbot.description, chatbot.user_id, chatbot.key
+        )
     return new_chatbot
 
 @router.get("/{chatbot_name}", response_model=ChatBotRead)

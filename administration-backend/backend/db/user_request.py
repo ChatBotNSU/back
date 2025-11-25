@@ -21,3 +21,5 @@ async def get_user(email: str|None = None, password: str|None = None) -> User:
     print(result)
     return User(**result)
 
+
+

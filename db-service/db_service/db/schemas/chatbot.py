@@ -5,6 +5,7 @@ class ChatBotCreate(BaseModel):
     name: str
     description: str
     user_id: int
+    key: str
 
 class ChatBotRead(BaseModel):
     id: int
