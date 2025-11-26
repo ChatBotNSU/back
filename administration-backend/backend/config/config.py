@@ -19,6 +19,17 @@ class MinioConfig(BaseModel):
     secret_key: str
     bucket_name: str
 
+class RedisStreamConfig(BaseModel):
+    stream_requests: str
+    stream_responses: str
+    group: str
+    consumer: str
+
+class RedisConfig(BaseModel):
+    host: str
+    port: int
+    IOStream: RedisStreamConfig
+
 class DatabaseServiceConfig(BaseModel):
     host: str
     port: int
@@ -34,6 +45,7 @@ class AppConfig(BaseModel):
     db_service: DatabaseServiceConfig
     authentication: AuthenticationConfig
     minio: MinioConfig
+    redis: RedisConfig
 
 
 def load_config(path: str | Path) -> AppConfig:

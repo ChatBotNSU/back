@@ -4,18 +4,18 @@ from pydantic import BaseModel
 class ChatBotCreateRequest(BaseModel):
     name: str
     description: str
-    config: dict  # Конфигурация для сохранения в MinIO
+    config: dict
 
 class ChatBotUpdateRequest(BaseModel):
     description: str
-    config: dict  # Обновленная конфигурация для MinIO
+    config: dict
 
 class ChatBotResponse(BaseModel):
     id: int
     name: str
     description: str
     user_id: int
-    config: dict  # Конфигурация из MinIO
+    config: dict
 
 class ChatBotListResponse(BaseModel):
     chatbots: List[ChatBotResponse]

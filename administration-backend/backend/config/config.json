@@ -20,5 +20,16 @@
         "access_key": "minioadmin",
         "secret_key": "minioadmin", 
         "bucket_name": "json-bucket"
+    },
+    
+    "redis": {
+        "host": "redis",
+        "port": 6379,
+        "IOStream": {
+            "stream_requests": "execution_requests",
+            "stream_responses": "execution_responses",
+            "group": "execution_group",
+            "consumer": "execution_consumer"
+        }
     }
 }
