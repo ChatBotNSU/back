@@ -29,9 +29,17 @@ class S3Config(BaseModel):
     user: str
     password: str
 
+class PyRunnerServiceConfig(BaseModel):
+    url: str
+    timeout_seconds: int = 15
+
+class ServicesConfig(BaseModel):
+    py_runner: PyRunnerServiceConfig
+
 class AppConfig(BaseModel):
     redis: RedisConfig
     s3: S3Config
+    services: ServicesConfig
     #db_service: DatabaseServiceConfig
 
 

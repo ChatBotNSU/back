@@ -12,5 +12,11 @@
     "s3": {
         "host": "minio",
         "port": 9000
+    },
+    "services": {
+    "py_runner": {
+        "url": "http://py-runner:8080/run",
+        "timeout_seconds": 15
     }
+    }   
 }
