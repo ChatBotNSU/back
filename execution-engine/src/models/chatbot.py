@@ -1,16 +1,22 @@
-from typing import Literal
-from pydantic import BaseModel
+from pydantic import Field, BaseModel
+from typing import Annotated, Union, Literal
+
+
+from .nodes import SendMessage, SetMessage, SetVariable, ScriptExecution, FileAnswer, TextAnswer, Wait, ConditionNode
 
 class Variable(BaseModel):
     name: str
     type: Literal["string", "number"]
 
-class Node(BaseModel):
-    node_id: str
+
+NodeType = Annotated[
+    Union[SetVariable, ScriptExecution, FileAnswer, TextAnswer, SendMessage, Wait, SetMessage, ConditionNode],
+    Field(discriminator="type")
+]
 
 class Graph(BaseModel):
     root: str # root node id
-    nodes: dict[str, Node]
+    nodes: dict[str, NodeType]
 
 class Chatbot(BaseModel):
     variables: list[Variable]
