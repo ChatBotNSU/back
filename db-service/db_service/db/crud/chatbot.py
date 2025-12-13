@@ -10,6 +10,27 @@ async def create_chatbot(session: AsyncSession, name: str, description: str, use
     await session.refresh(bot)
     return bot
 
+async def update_chatbot(
+    session: AsyncSession,
+    bot_id: int,
+    *,
+    name: str | None = None,
+    description: str | None = None,
+):
+    bot = await session.get(ChatBot, bot_id)
+    if bot is None:
+        raise ValueError("Chatbot not found")
+
+    if name is not None:
+        bot.name = name
+    if description is not None:
+        bot.description = description
+
+    await session.commit()
+    await session.refresh(bot)
+    return bot
+
+
 
 async def get_chatbot(session: AsyncSession, bot_id: int):
     return await session.get(ChatBot, bot_id)

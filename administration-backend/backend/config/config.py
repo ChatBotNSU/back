@@ -21,11 +21,17 @@ class AuthenticationConfig(BaseModel):
     algorithm: Literal["HS256", "HS384", "HS512"]
     access_token_expiration_minutes: int
 
+class S3Config(BaseModel):
+    host: str
+    port: int
+    user: str
+    password: str
 
 class AppConfig(BaseModel):
     server: ServerConfig
     db_service: DatabaseServiceConfig
     authentication: AuthenticationConfig
+    s3: S3Config
 
 
 def load_config(path: str | Path) -> AppConfig:
@@ -35,6 +41,16 @@ def load_config(path: str | Path) -> AppConfig:
     
     with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
+    
+    try:
+        data["s3"]["user"] = os.getenv("MINIO_ROOT_USER")
+        data["s3"]["password"] = os.getenv("MINIO_ROOT_PASSWORD")
+        if data["s3"]["user"] is None or data["s3"]["password"] is None:
+            raise ValidationError("Please setup MINIO_ROOT_USER and MINIO_ROOT_PASSWORD in .env file")
+    except ValidationError as e:
+        print("Ошибка валидации конфига:")
+        print(e.json())
+        raise
     
 
     try:
