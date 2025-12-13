@@ -6,6 +6,7 @@
 3. Then run 
 ```
 cd db-service
+pdm install
 pdm run makemig
 pdm run migrate
 ```
@@ -16,6 +17,10 @@ Your migrations will be saved and applied to the postgres. Tables will be create
 ``` 
 docker compose down
 docker compose --build
+```
+6. Swagger for administration backend is available on
+```
+localhost:8080/docs
 ```
 
 
@@ -53,3 +58,61 @@ class Chatbot(BaseModel):
 
 Отдельно заметим, что Graph представлен аналогом связного списка. У нас есть словарь нод, в котором мы индексируемся по node_id. Сам граф хранит ссылку на первую ноду. Все ноды должны в той или иной форме указывать на следующую.
 
+
+
+
+### Examples to put in S3
+chatbot-1.json
+```
+{
+    "variables": [
+        {
+            "name": "name",
+            "type": "string"
+        },
+        {
+            "name": "age",
+            "type": "number"
+        }
+    ],
+    "bot_id": 1,
+    "bot_name": "Pipik",
+    "graph": {
+        "root": "3",
+        "nodes": {
+            "1": {"node_id": "2"},
+            "2": {"node_id": "3"},
+            "3": {"node_id": "1"}
+        }
+    } 
+}
+
+```
+
+execution-1.json
+```
+{
+    "bot_id": 1,
+    "execution_id": 2,
+    "executing_node_id": "1",
+    "variable_values": {}
+}
+```
+
+execution request for redis
+```
+{
+    execution_id: 1,
+    chatbot_id: 1,
+    message: {
+        "text": "Go fuck yourself",
+        "images": [],
+        "audios": [],
+        "files": []
+    }
+}
+
+or 
+
+XADD execution_requests * payload '{"execution_id": 1, "chatbot_id": 1, "message": { "text": "Go fuck yourself", "images": [], "audios": [], "files": []}}'
+```

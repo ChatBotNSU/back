@@ -11,6 +11,8 @@ from .redis import get_redis
 from config import get_config
 from models import ExecutionRequest, ExecutionResponse
 
+logger = logging.getLogger("app")
+
 
 async def redis_router(request_processor: Callable[[ExecutionRequest], Awaitable[ExecutionResponse]]):
     redis = get_redis()
@@ -35,6 +37,7 @@ async def redis_router(request_processor: Callable[[ExecutionRequest], Awaitable
     # Redis loop
     # Waits for ExecutionRequest -> sends it request_processor -> sends ExecutionResponse
     while True:
+        logger.info("I BEG YOU!!!")
         try:
             response = await redis.xreadgroup(
                 group,
@@ -44,23 +47,28 @@ async def redis_router(request_processor: Callable[[ExecutionRequest], Awaitable
                 block=5000
             )
             if not response:
+                logger.info("NO FUCKEN REQUEST")
                 continue
             
             for stream_name, messages in response:
                 for msg_id, data in messages:
-                    print(f"Received {msg_id}: {data}")
+                    logger.info(f"Received shit {msg_id}: {data}")
 
                     payload = data.get("payload")
-                    print(f"Processing payload: {payload}")
+                    logger.info(f"Processing payload: {payload}")
 
-                    content = json.loads(payload)
-
+                    try:
+                        content = json.loads(payload)
+                    except Exception as e:
+                        logger.info("FUCKEN WRONG JSON")
+                        continue
+                    
                     try:
                         content = ExecutionRequest(**content)
                     except Exception as e:
-                        print(f"Error: {e}")
+                        logger.info(f"It is not ExecutionRequest")
                         continue
-
+                    
                     response = await request_processor(content)
 
                     await redis.xadd(stream_responses,
@@ -71,5 +79,5 @@ async def redis_router(request_processor: Callable[[ExecutionRequest], Awaitable
                     print(f"Acked message {msg_id}")
 
         except Exception as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             await asyncio.sleep(1)
