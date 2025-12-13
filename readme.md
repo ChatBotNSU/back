@@ -127,3 +127,7 @@ you can see responses with
 ```
 XREVRANGE execution_responses + - COUNT 10
 ```
+
+
+### Known issues
+1. Now chatbots support only one file added a time. Because it is just stores filepath to the variable, it cannot work with plenty of files sent in a time. Fix of this issue needs slight redesign which is kinda hard. The simplest redesign possible is adding type list[str] and in SetVariable node adding feature like operation ``[]`` and operand ``number`` which will grant opportunity to use indexing in a little counterintuitive style but at least something
