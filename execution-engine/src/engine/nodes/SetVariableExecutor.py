@@ -12,13 +12,11 @@ logger = logging.getLogger("app")
 class SetVariableExecutor():
     async def execute(self, execution_state: RunTimeExecutionState, node: SetVariable, chatbot: Chatbot):
         execution_state.executing_node_id = node.next_node_id
-        logger.info("STEP 0")
         variable_type = ""
         for variable in chatbot.variables:
             if variable.name == node.assigned_variable:
                 variable_type = variable.type
         
-        logger.info(execution_state.variable_values)
         if variable_type == "":
             FailExecutor().execute(execution_state, "Set variable executor: variable not found")
             return
@@ -26,7 +24,6 @@ class SetVariableExecutor():
 
         variable_value = execution_state.variable_values[node.assigned_variable]
 
-        logger.info("STEP 2")
         if variable_type == "number":
             try:
                 variable_value = float(variable_value)
@@ -60,5 +57,4 @@ class SetVariableExecutor():
                 variable_value += node.operand
 
         
-        logger.info("STEP 3")
         execution_state.variable_values[node.assigned_variable] = variable_value

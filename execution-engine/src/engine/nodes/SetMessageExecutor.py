@@ -7,7 +7,7 @@ from .FailExecutor import FailExecutor
 
 class SetMessageExecutor():
     async def execute(self, execution: RunTimeExecutionState, node: SetMessage, chatbot: Chatbot):
-        execution.out_message.text = node.text
+        execution.out_message.text = node.text.format(**execution.variable_values)
         execution.out_message.audios = node.audios
         execution.out_message.images = node.images
         execution.out_message.files = node.files

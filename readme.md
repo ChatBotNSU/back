@@ -78,14 +78,17 @@ chatbot-1.json
     "bot_id": 1,
     "bot_name": "Pipik",
     "graph": {
-        "root": "3",
+        "root": "1",
         "nodes": {
-            "1": {"node_id": "2"},
-            "2": {"node_id": "3"},
-            "3": {"node_id": "1"}
+            "1": {"type": "set_variable", "assigned_variable": "name", "operation": "=", "operand": "Pipik", "next_node_id": "2"},
+            "2": {"type": "set_variable", "assigned_variable": "age", "operation": "=", "operand": "18", "next_node_id": "3"},
+            "3": {"type": "set_message", "text": "Hello, {name}! You are {age} years old.", "audios": [], "images": [], "files": [], "choise_options": [],  "next_node_id": "4"},
+            "4": {"type": "send_message", "next_node_id": "1"},
+            "5": {"type": "text_answer", "assigned_variable": "name", "next_node_id": "3"}
         }
     } 
 }
+
 
 ```
 
@@ -95,7 +98,10 @@ execution-1.json
     "bot_id": 1,
     "execution_id": 2,
     "executing_node_id": "1",
-    "variable_values": {}
+    "variable_values": {
+        "name": "",
+        "age": 0
+    }
 }
 ```
 
@@ -105,14 +111,19 @@ execution request for redis
     execution_id: 1,
     chatbot_id: 1,
     message: {
-        "text": "Go fuck yourself",
+        "text": "Lol",
         "images": [],
         "audios": [],
         "files": []
     }
 }
 
-or 
+In Redis CLI (docker exec -it redis redis-cli):
 
-XADD execution_requests * payload '{"execution_id": 1, "chatbot_id": 1, "message": { "text": "Go fuck yourself", "images": [], "audios": [], "files": []}}'
+XADD execution_requests * payload '{"execution_id": 1, "chatbot_id": 1, "message": { "text": "lol", "images": [], "audios": [], "files": []}}'
+```
+
+you can see responses with
+```
+XREVRANGE execution_responses + - COUNT 10
 ```
