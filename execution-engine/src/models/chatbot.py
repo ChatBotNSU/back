@@ -6,11 +6,11 @@ class Variable(BaseModel):
     type: Literal["string", "number"]
 
 class Node(BaseModel):
-    node_id: int
+    node_id: str
 
 class Graph(BaseModel):
-    root: int # root node id
-    nodes: dict[int, Node]
+    root: str # root node id
+    nodes: dict[str, Node]
 
 class Chatbot(BaseModel):
     variables: list[Variable]

@@ -9,7 +9,7 @@ class ExecutionState(BaseModel):
     '''
     bot_id: int # id of the bot for execution
     execution_id: int # id of the execution
-    executing_node_id: int # id of the node being executed
+    executing_node_id: str # id of the node being executed
     variable_values: dict[str, str|int]
 
 

@@ -1,5 +1,10 @@
+import logging
+
 from .engine import Engine
 from minio_controller.S3Client import S3Client
+
+
+logger = logging.getLogger("app")
 
 class EngineFactory:
     '''Singleton class that provides access to created engines and creates new ones when needed'''
@@ -17,5 +22,11 @@ class EngineFactory:
             return self.existing_engines[execution_id]
 
         s3client = S3Client.get_instance()
-        # TODO: get execution by execution_id and chatbot by chatbot_id from s3
-        # TODO: instantiate engine
+
+        chatbot = s3client.download_chatbot(chatbot_id)
+        execution = s3client.download_execution(execution_id)
+
+        engine = Engine(chatbot, execution)
+        self.existing_engines[execution_id] = engine
+        logger.info("Engine instatiated")
+        return engine

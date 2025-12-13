@@ -3,13 +3,14 @@
 # Изначально S3Client инится в main.py, потом на нем просто вызывается get_instance и больше ничего трогать не надо
 # Методы download_execution и download_chatbot на момент написания этого текста нигде не используются. 
 # Скорее всего, есть смысл переделать их на работу не с байтами, а на работу объектами Chatbot и Execution, чтобы полностью изолировать этот кусок 
-
+import io
 
 from minio import Minio
 from typing import Optional
 import threading
 
-# TODO: rewrite download and upload methods to work with Chatbot and Execution not bytes
+from models import Chatbot, ExecutionState
+
 
 class S3Client:
     _instance: Optional["S3Client"] = None
@@ -31,26 +32,40 @@ class S3Client:
             raise RuntimeError("S3Client not initialized yet. Expected call of constructor beforehand.")
         return S3Client._instance
 
-    # ----------------------
-    # Методы для execution
-    # ----------------------
-    def upload_execution(self, execution_id: int, data: bytes):
-        obj_name = f"execution-{execution_id}"
-        self.client.put_object(self.bucket, obj_name, data, length=len(data))
 
-    def download_execution(self, execution_id: int) -> bytes:
-        obj_name = f"execution-{execution_id}"
+    def upload(self, obj_name: str, data: bytes):
+        data_stream = io.BytesIO(data)
+
+        self.client.put_object(
+            self.bucket,
+            obj_name,
+            data_stream,
+            length=len(data),
+            content_type="application/json",
+        )
+
+    def download(self, obj_name: str) -> bytes:
         response = self.client.get_object(self.bucket, obj_name)
         return response.read()
+    
 
-    # ----------------------
-    # Методы для chatbot
-    # ----------------------
-    def upload_chatbot(self, chatbot_id: int, data: bytes):
-        obj_name = f"chatbot-{chatbot_id}"
-        self.client.put_object(self.bucket, obj_name, data, length=len(data))
+    def upload_chatbot(self, chatbot_id: int, chatbot: Chatbot):
+        obj_name = f"chatbot-{chatbot_id}.json"
+        data = chatbot.model_dump_json().encode("utf-8")
+        self.upload(obj_name, data)
 
-    def download_chatbot(self, chatbot_id: int) -> bytes:
-        obj_name = f"chatbot-{chatbot_id}"
-        response = self.client.get_object(self.bucket, obj_name)
-        return response.read()
+    def download_chatbot(self, chatbot_id: int) -> Chatbot:
+        obj_name = f"chatbot-{chatbot_id}.json"
+        data = self.download(obj_name)
+        return Chatbot.model_validate_json(data)
+    
+
+    def upload_execution(self, execution_id: int, execution_state: ExecutionState):
+        obj_name = f"execution-{execution_id}.json"
+        data = execution_state.model_dump_json().encode("utf-8")
+        self.upload(obj_name, data)
+
+    def download_execution(self, execution_id: int) -> ExecutionState:
+        obj_name = f"execution-{execution_id}.json"
+        data = self.download(obj_name)
+        return ExecutionState.model_validate_json(data)

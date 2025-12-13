@@ -1,0 +1,22 @@
+{
+    "variables": [
+        {
+            "name": "name",
+            "type": "string"
+        },
+        {
+            "name": "age",
+            "type": "number"
+        }
+    ],
+    "bot_id": 1,
+    "bot_name": "Pipik",
+    "graph": {
+        "root": "3",
+        "nodes": {
+            "1": {"node_id": "2"},
+            "2": {"node_id": "3"},
+            "3": {"node_id": "1"}
+        }
+    } 
+}

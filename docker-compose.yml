@@ -62,7 +62,7 @@ services:
     
   py-runner:
     build:
-      context: ./services/py_runner
+      context: ./execution-engine/services/py_runner
       dockerfile: Dockerfile
     restart: always
     healthcheck:
