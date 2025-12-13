@@ -1,6 +1,15 @@
+# Хз, это написала гптшка. Вроде все должно правильно работать
+# Общий принцип. Не лезть в __init__ и get_instance. Они нужны, чтобы правильно работал синглтон
+# Изначально S3Client инится в main.py, потом на нем просто вызывается get_instance и больше ничего трогать не надо
+# Методы download_execution и download_chatbot на момент написания этого текста нигде не используются. 
+# Скорее всего, есть смысл переделать их на работу не с байтами, а на работу объектами Chatbot и Execution, чтобы полностью изолировать этот кусок 
+
+
 from minio import Minio
 from typing import Optional
 import threading
+
+# TODO: rewrite download and upload methods to work with Chatbot and Execution not bytes
 
 class S3Client:
     _instance: Optional["S3Client"] = None

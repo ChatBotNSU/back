@@ -4,6 +4,7 @@ from src.models.chatbot import Chatbot
 from src.models.execution_state import ExecutionState, RunTimeExecutionState, InMessage, OutMessage
 
 class Engine:
+
     chatbot: Chatbot
     execution_state: ExecutionState
     runtime_execution_state: RunTimeExecutionState
