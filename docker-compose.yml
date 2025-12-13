@@ -18,6 +18,8 @@ services:
       - db
     env_file:
       - db-service/.env
+    ports:
+      - "1488:8000"
     networks:
       - db_network
       - internal_network

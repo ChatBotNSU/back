@@ -12,5 +12,10 @@
     "authentication": {
         "algorithm": "HS256",
         "access_token_expiration_minutes": 30
+    },
+    
+    "s3": {
+        "host": "minio",
+        "port": 9000
     }
 }
