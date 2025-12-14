@@ -14,6 +14,6 @@ router = APIRouter()
 
 poller = TelegramPoller()
 
-@router.get("/assigne")
+@router.post("/assigne")
 async def assigne(token: str, chatbot_id: int):
     await poller.update_bots(token, chatbot_id)

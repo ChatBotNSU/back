@@ -1,7 +1,6 @@
 import logging
 import json
-import threading
-from typing import Optional, Callable, Awaitable
+from typing import Optional
 from itertools import count
 
 import asyncio
@@ -17,7 +16,7 @@ logger = logging.getLogger("app")
 
 class RedisStreamsController:
     _instance: Optional["RedisStreamsController"] = None
-    _lock = threading.Lock()
+    _lock = asyncio.Lock()
     _execution_counter = count(start=0)
 
     def __init__(self):
