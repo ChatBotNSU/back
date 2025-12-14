@@ -19,13 +19,8 @@ class RedisConfig(BaseModel):
     port: int
     IOStream: RedisStreamConfig
 
-class ServerConfig(BaseModel):
-    host: str
-    port: int
-
 class AppConfig(BaseModel):
     redis: RedisConfig
-    server: ServerConfig
 
 
 def load_config(path: str | Path) -> AppConfig:
