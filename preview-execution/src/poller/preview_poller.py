@@ -29,7 +29,7 @@ async def process_preview(chatbot_id: int, execution_id: int, message: InMessage
         
     await controller.put_message(request)
     
-    result = await asyncio.wait_for(future)
+    result = await asyncio.wait_for(future, timeout=None)
     return result
 
 

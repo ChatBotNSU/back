@@ -1,5 +1,4 @@
 import logging
-import threading
 from typing import Dict, Optional
 import asyncio
 from asyncio import Future
@@ -11,7 +10,7 @@ logger = logging.getLogger("app")
 
 class PreviewResponseSender:
     _instance: Optional["PreviewResponseSender"] = None
-    _lock = threading.Lock()
+    _lock = asyncio.Lock()
 
     def __init__(self):
         self._pending_responses: Dict[int, Future] = {}

@@ -1,6 +1,5 @@
 import logging
 import json
-import threading
 from typing import Optional
 
 import asyncio
@@ -16,7 +15,7 @@ logger = logging.getLogger("app")
 
 class RedisStreamsController:
     _instance: Optional["RedisStreamsController"] = None
-    _lock = threading.Lock()
+    _lock = asyncio.Lock()
 
     def __init__(self):
         config = get_config()
