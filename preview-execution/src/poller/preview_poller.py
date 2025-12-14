@@ -33,6 +33,6 @@ async def process_preview(chatbot_id: int, execution_id: int, message: InMessage
     return result
 
 
-@router.post("/get_execution_id", response_model=int)
+@router.get("/get_execution_id", response_model=int)
 async def get_execution_id() -> int:
     return controller.get_execution_id()
