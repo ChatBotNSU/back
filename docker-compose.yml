@@ -49,6 +49,28 @@ services:
       - internal_network
     command: ["pdm", "run", "serve"]
 
+  preview_execution:
+    build: preview-execution
+    container_name: preview-execution
+    depends_on:
+      - redis
+    ports:
+      - "8081:8000"
+    networks:
+      - internal_network
+    command: ["pdm", "run", "serve"]
+
+  telegram-execution:
+    build: telegram-execution
+    container_name: telegram-execution
+    depends_on:
+      - redis
+    ports:
+      - "8082:8000"
+    networks:
+      - internal_network
+    command: ["pdm", "run", "serve"]
+
   execution_engine:
     build: execution-engine
     # container_name: execution-engine
@@ -61,6 +83,7 @@ services:
     networks:
       - internal_network
     command: ["pdm", "run", "serve"]
+  
     
   py-runner:
     build:
