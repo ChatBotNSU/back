@@ -1,0 +1,19 @@
+[project]
+name = "execution"
+version = "0.0.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Abramenko Vladimie", email = "vovadinamik8913@gmail.com"},
+]
+dependencies = ["redis>=7.0.1", "pydantic>=2.12.4", "dotenv>=0.9.9", "minio>=7.2.18"]
+requires-python = "==3.12.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.scripts]
+serve.cmd = "python src/main.py"
+serve.env = {PYTHONPATH = "src"}
