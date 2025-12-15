@@ -80,7 +80,15 @@ def ast_policy_check(code: str, allow_imports: List[str]):
 
 # network guard: deny private IPs, ports not allowed
 def patch_network(net: NetPolicy):
+    import socket, ipaddress
     orig_create = socket.create_connection
+    orig_getaddrinfo = socket.getaddrinfo
+
+    try:
+        import urllib3.util.connection as urllib3_conn
+        orig_u3_create = urllib3_conn.create_connection
+    except Exception:
+        urllib3_conn, orig_u3_create = None, None
 
     private_networks = [
         ipaddress.ip_network("127.0.0.0/8"),
@@ -92,7 +100,7 @@ def patch_network(net: NetPolicy):
         ipaddress.ip_network("100.64.0.0/10"),
         ipaddress.ip_network("fc00::/7"),
         ipaddress.ip_network("fe80::/10"),
-        ipaddress.ip_network("169.254.169.254/32"),  # metadata
+        ipaddress.ip_network("169.254.169.254/32"),
     ]
 
     def is_private_ip(ip: str) -> bool:
@@ -102,19 +110,62 @@ def patch_network(net: NetPolicy):
         except ValueError:
             return True
 
+    def guarded_getaddrinfo(host, port, *args, **kwargs):
+        if port not in net.allow_ports:
+            raise PermissionError(f"Port {port} not allowed")
+        infos = orig_getaddrinfo(host, port, *args, **kwargs)
+        filtered = []
+        for info in infos:
+            sockaddr = info[4]
+            ip = sockaddr[0]
+            if net.deny_private_ips and is_private_ip(ip):
+                continue
+            filtered.append(info)
+        if not filtered:
+            raise PermissionError("All resolved IPs are private or blocked")
+        return filtered
+
     def guarded_create_connection(address, timeout=None, source_address=None):
         host, port = address
         if port not in net.allow_ports:
             raise PermissionError(f"Port {port} not allowed")
-        # resolve and check all A/AAAA
         infos = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+        last_err = None
         for family, socktype, proto, canonname, sockaddr in infos:
-            ip = sockaddr[0]
-            if net.deny_private_ips and is_private_ip(ip):
-                raise PermissionError(f"Connection to private IP {ip} is blocked")
-        return orig_create(address, timeout=timeout, source_address=source_address)
+            try:
+                return orig_create(sockaddr, timeout=timeout, source_address=source_address)
+            except OSError as e:
+                last_err = e
+                continue
+        if last_err:
+            raise last_err
+        raise PermissionError("No public address available to connect")
 
-    socket.create_connection = guarded_create_connection  # type: ignore
+    def guarded_u3_create_connection(address, timeout=None, source_address=None, **kwargs):
+        host, port = address
+        if port not in net.allow_ports:
+            raise PermissionError(f"Port {port} not allowed")
+        infos = socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM)
+        last_err = None
+        for family, socktype, proto, canonname, sockaddr in infos:
+            try:
+                s = socket.socket(family, socktype, proto)
+                if timeout is not None:
+                    s.settimeout(timeout)
+                s.connect(sockaddr)
+                return s
+            except OSError as e:
+                last_err = e
+                continue
+        if last_err:
+            raise last_err
+        raise PermissionError("No public address available to connect")
+
+    socket.getaddrinfo = guarded_getaddrinfo
+    socket.create_connection = guarded_create_connection  # stdlib
+    if urllib3_conn and orig_u3_create:
+        urllib3_conn.create_connection = guarded_u3_create_connection  # urllib3 path
+
 
 def enforce_limits(memory_mb: int, cpu_seconds: int):
     bytes_limit = memory_mb * 1024 * 1024
@@ -123,6 +174,17 @@ def enforce_limits(memory_mb: int, cpu_seconds: int):
     resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds))
     resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
     resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))  # forbid new processes
+
+def _is_policy_violation(exc: BaseException) -> bool:
+    cur = exc
+    while cur is not None:
+        if isinstance(cur, PermissionError):
+            return True
+        cur = getattr(cur, "__cause__", None) or getattr(cur, "__context__", None)
+    s = str(exc)
+    if "All resolved IPs are private or blocked" in s or "Port " in s and " not allowed" in s:
+        return True
+    return False
 
 def worker(payload: dict, conn):
     # apply resource limits
@@ -172,7 +234,8 @@ def worker(payload: dict, conn):
     except MemoryError as e:
         status = "OOM"; err = {"type": "MemoryError", "message": str(e), "traceback": traceback.format_exc()}
     except Exception as e:
-        status = "RUNTIME_ERROR"; err = {"type": type(e).__name__, "message": str(e), "traceback": traceback.format_exc()}
+        status = "POLICY_VIOLATION" if _is_policy_violation(e) else "RUNTIME_ERROR"
+        err = {"type": type(e).__name__, "message": str(e), "traceback": traceback.format_exc()}
     finally:
         sys.stdout, sys.stderr = old_out, old_err
 

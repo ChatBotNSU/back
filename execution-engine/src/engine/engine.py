@@ -3,8 +3,7 @@ import logging
 
 from models.chatbot import Chatbot
 from models.execution_state import ExecutionState, RunTimeExecutionState, InMessage, OutMessage
-from .nodes import FailExecutor, SendMessageExecutor, SetMessageExecutor, SetVariableExecutor, TextAnswerExecutor
-
+from .nodes import FailExecutor, SendMessageExecutor, SetMessageExecutor, SetVariableExecutor, TextAnswerExecutor, ScriptNodeExecutor
 
 logger = logging.getLogger("app")
 
@@ -13,6 +12,7 @@ node_executors = {
     "set_message": SetMessageExecutor(),
     "set_variable": SetVariableExecutor(),
     "send_message": SendMessageExecutor(),
+    "script": ScriptNodeExecutor(),
 }
 
 class Engine:
