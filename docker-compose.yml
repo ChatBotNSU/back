@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16
-    container_name: db_postgres
+    # container_name: db_postgres
     env_file:
       - db-service/.env
     volumes:
@@ -13,7 +13,7 @@ services:
 
   db_service:
     build: db-service
-    container_name: db-service
+    # container_name: db-service
     depends_on:
       - db
     env_file:
@@ -27,7 +27,7 @@ services:
 
   populate_whitelist:
     build: db-service
-    container_name: populate_whitelist
+    # container_name: populate_whitelist
     depends_on:
       - db
     env_file:
@@ -40,7 +40,7 @@ services:
   
   administration_backend:
     build: administration-backend
-    container_name: administration-backend
+    # container_name: administration-backend
     depends_on:
       - db_service
     ports:
@@ -51,7 +51,7 @@ services:
 
   execution_engine:
     build: execution-engine
-    container_name: execution-engine
+    # container_name: execution-engine
     depends_on:
       - db_service
       - redis
@@ -90,7 +90,7 @@ services:
 
   redis:
     image: redis:7
-    container_name: redis
+    # container_name: redis
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     networks:
       - internal_network
@@ -99,7 +99,7 @@ services:
 
   minio:
     image: minio/minio:latest
-    container_name: minio
+    # container_name: minio
     command: server /data --console-address ":9001"
     env_file:
       - minio-service/.env
