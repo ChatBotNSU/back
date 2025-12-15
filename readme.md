@@ -120,7 +120,7 @@ execution request for redis
 
 In Redis CLI (docker exec -it redis redis-cli):
 
-XADD execution_requests * payload '{"execution_id": 1, "chatbot_id": 1, "message": { "text": "lol", "images": [], "audios": [], "files": []}}'
+XADD execution_requests * payload '{"execution_id": 1488, "chatbot_id": 1, "message": { "text": "lol", "images": [], "audios": [], "files": []}}'
 ```
 
 you can see responses with
