@@ -31,7 +31,7 @@ class TelegramResponseSender:
         
         return future
 
-    async def send_response(self, response: ExecutionResponse):
+    async def send_response(self, response: ExecutionResponse) -> bool:
         execution_id = response.execution_id
         
         async with self._lock:
@@ -42,5 +42,7 @@ class TelegramResponseSender:
             async with self._lock:
                 self._pending_responses.pop(execution_id, None)
             logger.info(f"Response sent for execution_id={execution_id}")
+            return True
         else:
             logger.warning(f"No pending request found for execution_id={execution_id}")
+            return False
