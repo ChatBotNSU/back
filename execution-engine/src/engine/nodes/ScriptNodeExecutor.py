@@ -15,19 +15,26 @@ class ScriptNodeExecutor:
             FailExecutor().execute(execution_state, "Script executor: node has no 'code' (or 'script') field")
             return
 
-        schema: dict[str, str] = {}
-        variables: dict[str, str | int] = {}
-
-        declared_types = {v.name: v.type for v in getattr(chatbot, "variables", [])}
-
-        for name, declared_type in declared_types.items():
-            if declared_type == "number":
-                schema[name] = "int"
+        declared: dict[str, str] = {}
+        for v in getattr(chatbot, "variables", []):
+            if getattr(v, "type", None) == "number":
+                declared[v.name] = "int"
             else:
-                schema[name] = "str"
+                declared[v.name] = "str"
 
+        all_keys = set(execution_state.variable_values.keys()) | set(declared.keys())
+
+        schema: dict[str, str] = {}
+        for k in all_keys:
+            if k in declared:
+                schema[k] = declared[k]
+            else:
+                val = execution_state.variable_values.get(k)
+                schema[k] = "int" if (isinstance(val, int) and not isinstance(val, bool)) else "str"
+
+        variables: dict[str, int | str] = {}
+        for name in all_keys:
             val = execution_state.variable_values.get(name)
-
             if schema[name] == "int":
                 try:
                     if isinstance(val, bool):
@@ -36,7 +43,7 @@ class ScriptNodeExecutor:
                         variables[name] = val
                     elif isinstance(val, float):
                         variables[name] = int(val)
-                    elif val is None:
+                    elif val is None or val == "":
                         variables[name] = 0
                     else:
                         variables[name] = int(str(val))
@@ -74,9 +81,14 @@ class ScriptNodeExecutor:
             FailExecutor().execute(execution_state, f"Script executor: {err}")
             return
 
+        allowed = set(declared.keys())
         if resp.variables:
-            execution_state.variable_values.update(resp.variables)
-        if resp.added_variables:
-            execution_state.variable_values.update(resp.added_variables)
+            updates = {k: v for k, v in resp.variables.items() if k in allowed}
+            execution_state.variable_values.update(updates)
+
+        if getattr(resp, "removed_variables", None):
+            for k in resp.removed_variables:
+                if k in allowed:
+                    execution_state.variable_values.pop(k, None)
 
         execution_state.executing_node_id = node.next_node_id
