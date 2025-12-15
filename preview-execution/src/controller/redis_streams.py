@@ -36,9 +36,9 @@ class RedisStreamsController:
             raise RuntimeError("RedisStreamsController not initialized yet. Expected call of constructor beforehand.")
         return RedisStreamsController._instance
     
-    def get_execution_id(self) -> int:
-        with RedisStreamsController._lock:
-            return next(RedisStreamsController._execution_counter)
+    async def get_execution_id(self) -> int:
+        async with self._lock:
+            return next(self._execution_counter)
 
     async def put_message(self, request: ExecutionRequest):
         await self.redis.xadd(self.stream_requests,
