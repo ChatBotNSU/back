@@ -7,6 +7,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import Update
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from fastapi import HTTPException
 
 from sender.telegram_sender import TelegramResponseSender
 from controller.redis_streams import RedisStreamsController
@@ -46,7 +47,7 @@ class TelegramPoller:
     async def get_by_token(self, token: str) -> int:
         async with self._lock:
             if token not in self._bots:
-                return 0
+                raise HTTPException(status_code=404, detail="Token not found")
             return self._bots[token]
 
     async def _poll_bot(self, token: str):
