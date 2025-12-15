@@ -80,6 +80,12 @@ def ast_policy_check(code: str, allow_imports: List[str]):
 
 # network guard: deny private IPs, ports not allowed
 def patch_network(net: NetPolicy):
+    ports = set()
+    if "https" in net.egress: ports.add(443)
+    if "http"  in net.egress: ports.add(80)
+    if ports:
+        net.allow_ports = sorted(set(net.allow_ports) & ports if net.allow_ports else ports)
+
     import socket, ipaddress
     orig_create = socket.create_connection
     orig_getaddrinfo = socket.getaddrinfo
@@ -227,6 +233,14 @@ def worker(payload: dict, conn):
     stdout, stderr = io.StringIO(), io.StringIO()
     old_out, old_err = sys.stdout, sys.stderr
     sys.stdout, sys.stderr = stdout, stderr
+
+    try:
+        import os
+        allowed_env = {}
+        os.environ.clear()
+        os.environ.update(allowed_env)
+    except Exception:
+        pass
 
     status, err = "OK", None
     try:

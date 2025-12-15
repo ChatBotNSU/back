@@ -12,7 +12,7 @@ node_executors = {
     "set_message": SetMessageExecutor(),
     "set_variable": SetVariableExecutor(),
     "send_message": SendMessageExecutor(),
-    "script": ScriptNodeExecutor(),
+    "script_execution": ScriptNodeExecutor(),
 }
 
 class Engine:
