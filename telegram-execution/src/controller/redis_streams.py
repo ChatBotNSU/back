@@ -70,8 +70,8 @@ class RedisStreamsController:
                         except Exception as e:
                             logger.info(f"It is not ExecutionResponse")
                             continue
-
-                        self.sender.send_response(content)
+                        logger.info(f"TRYING TO SEND ExecutionResponse")
+                        await self.sender.send_response(content)
             except Exception as e:
                 logger.info(f"Error: {e}")
                 await asyncio.sleep(1)

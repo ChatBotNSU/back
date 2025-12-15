@@ -81,8 +81,37 @@ class TelegramPoller:
                 
                 logger.info(f"Message from user {message.from_user.id} sent to Redis, execution_id={execution_id}")
                 
-                result = await asyncio.wait_for(future, timeout=None)
-                await message.answer(result)
+                out_message = await asyncio.wait_for(future, timeout=None)
+                await message.answer(out_message.text)
+
+                for image_url in out_message.images:
+                    try:
+                        await message.answer_photo(image_url)
+                    except Exception as e:
+                        logger.error(f"Error sending image: {e}")
+
+                for audio_url in out_message.audios:
+                    try:
+                        await message.answer_audio(audio_url)
+                    except Exception as e:
+                        logger.error(f"Error sending audio: {e}")
+
+                for file_url in out_message.files:
+                    try:
+                        await message.answer_document(file_url)
+                    except Exception as e:
+                        logger.error(f"Error sending file: {e}")
+            
+                if out_message.choise_options:
+                    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                
+                    keyboard = InlineKeyboardMarkup(
+                        inline_keyboard=[
+                            [InlineKeyboardButton(text=option, callback_data=f"choice_{i}")]
+                            for i, option in enumerate(out_message.choise_options)
+                        ]
+                    )
+                    await message.answer("Выберите вариант:", reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error handling message in bot {token}: {e}")

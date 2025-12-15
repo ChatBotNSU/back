@@ -33,6 +33,13 @@ async def redis_router(request_processor: Callable[[ExecutionRequest], Awaitable
             pass
         else:
             raise
+    try:
+        await redis.xgroup_create(name=stream_responses, groupname=group, id="$", mkstream=True)
+    except ResponseError as e:
+        if "BUSYGROUP" in str(e):
+            pass
+        else:
+            raise
 
     # Redis loop
     # Waits for ExecutionRequest -> sends it request_processor -> sends ExecutionResponse
