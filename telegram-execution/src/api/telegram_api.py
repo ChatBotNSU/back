@@ -20,8 +20,8 @@ async def assigne(token: str, chatbot_id: int):
 
 @router.get("/get_all", response_model=Dict[str, int])
 async def get_all() -> Dict[str, int]:
-    await poller.get_all()
+    return await poller.get_all()
 
 @router.get("/get/{token}", response_model=int)
 async def get(token:str) -> int:
-    await poller.get_by_token(token)
+    return await poller.get_by_token(token)
