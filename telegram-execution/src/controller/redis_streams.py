@@ -70,8 +70,11 @@ class RedisStreamsController:
                         except Exception as e:
                             logger.info(f"It is not ExecutionResponse")
                             continue
-                        logger.info(f"TRYING TO SEND ExecutionResponse")
-                        await self.sender.send_response(content)
+                        
+                        contains = await self.sender.send_response(content)
+                        if not contains:
+                            await self.redis.xadd(self.stream_responses,
+                              {"payload": content.model_dump_json()})
             except Exception as e:
                 logger.info(f"Error: {e}")
                 await asyncio.sleep(1)

@@ -39,6 +39,16 @@ class TelegramPoller:
                 await self._poll_bot(token)
             self._bots[token] = chatbot_id
 
+    async def get_all(self) -> Dict[str, int]:
+        async with self._lock:
+            return self._bots
+
+    async def get_by_token(self, token: str) -> int:
+        async with self._lock:
+            if token not in self._bots:
+                return 0
+            return self._bots[token]
+
     async def _poll_bot(self, token: str):
         try:
             bot = Bot(
