@@ -35,6 +35,7 @@ class Engine:
                                                                 out_message=OutMessage())
             while not self.runtime_execution_state.send_message_flag:
                 next_node = self.chatbot.graph.nodes[self.runtime_execution_state.executing_node_id]
+                logger.info(f"Executing node: {next_node}")
                 if next_node.type not in node_executors:
                     FailExecutor().execute(self.runtime_execution_state, f"Node executor not found: {next_node.type}")
                     return self.runtime_execution_state.out_message

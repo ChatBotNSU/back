@@ -1,24 +1,29 @@
-{
-    "variables": [
-        {
-            "name": "name",
-            "type": "string"
-        },
-        {
-            "name": "age",
-            "type": "number"
-        }
-    ],
-    "bot_id": 1,
-    "bot_name": "Pipik",
-    "graph": {
-        "root": "1",
-        "nodes": {
-            "1": {"type": "set_variable", "assigned_variable": "name", "operation": "=", "operand": "Pipik", "next_node_id": "2"},
-            "2": {"type": "set_variable", "assigned_variable": "age", "operation": "=", "operand": "18", "next_node_id": "3"},
-            "3": {"type": "set_message", "text": "Hello, {name}! You are {age} years old.", "audios": [], "images": [], "files": [], "choise_options": [],  "next_node_id": "4"},
-            "4": {"type": "send_message", "next_node_id": "1"},
-            "5": {"type": "text_answer", "assigned_variable": "name", "next_node_id": "3"}
-        }
-    } 
-}
+    {
+        "variables": [
+            {
+                "name": "name",
+                "type": "string"
+            },
+            {
+                "name": "age",
+                "type": "number"
+            }
+        ],
+        "bot_id": 1,
+        "bot_name": "Pipik",
+        "graph": {
+            "root": "1",
+            "nodes": {
+                "1": {"type": "set_variable", "assigned_variable": "name", "operation": "=", "operand": "Pipik", "next_node_id": "2"},
+                "2": {"type": "set_variable", "assigned_variable": "age", "operation": "=", "operand": "18", "next_node_id": "3"},
+                "3": {"type": "set_message", "text": "Hello, {name}! You are {age} years old.", "audios": [], "images": [], "files": [], "choise_options": [],  "next_node_id": "4"},
+                "4": {"type": "send_message", "next_node_id": "5"},
+                "5": {"type": "text_answer", "assigned_variable": "name", "next_node_id": "6"},
+                "6": {"type": "set_message", "text": "Hello, {name}! You are {age} years old.", "audios": [], "images": [], "files": [], "choise_options": [],  "next_node_id": "7"},
+                "7": {"type": "send_message", "next_node_id": "8"},
+                "8": {"type": "script_execution", "script": "name = 'Motherfucker'", "next_node_id": "9"},
+                "9": {"type": "set_message", "text": "Hello, {name}! You are {age} years old.", "audios": [], "images": [], "files": [], "choise_options": [],  "next_node_id": "10"},
+                "10": {"type": "send_message", "next_node_id": "1"}
+            }
+        } 
+    }
