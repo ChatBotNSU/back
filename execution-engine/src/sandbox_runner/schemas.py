@@ -11,7 +11,9 @@ class NetPolicy(BaseModel):
     allow_ports: List[int] = [80, 443]
 
 class PackagePolicy(BaseModel):
-    allow_imports: List[str] = ["requests", "httpx", "json", "re", "datetime", "math"]
+    allow_imports: List[str] = [
+        "requests","httpx","json","re","datetime","math","statistics","itertools","functools"
+    ]
 
 class RunRequest(BaseModel):
     job_id: str
