@@ -1,0 +1,19 @@
+[project]
+name = "telegram-execution"
+version = "0.0.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Abramenko Vladimie", email = "vovadinamik8913@gmail.com"},
+]
+dependencies = ["fastapi>=0.120.0", "uvicorn>=0.38.0", "redis>=7.0.1", "pydantic>=2.12.4", "dotenv>=0.9.9", "aiohttp>=3.13.2", "aiogram>=3.23.0"]
+requires-python = "==3.12.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.scripts]
+serve.cmd = "uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
+serve.env = {PYTHONPATH = "src"}
