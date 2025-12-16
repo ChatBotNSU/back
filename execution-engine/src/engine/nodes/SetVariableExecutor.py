@@ -35,7 +35,7 @@ class SetVariableExecutor():
             if node.operation == "+=":
                 variable_value += node.operand
             if node.operation == "=":
-                variable_value += node.operand
+                variable_value = node.operand
             elif node.operation == "-=":
                 variable_value -= node.operand
             elif node.operation == "/=":
@@ -53,7 +53,9 @@ class SetVariableExecutor():
                 FailExecutor().execute(execution_state, "Set variable executor: variable type mismatch", "USER")
                 return
             
-            if node.operation == "+=":
+            if node.operation == "=":
+                variable_value = node.operand
+            elif node.operation == "+=":
                 variable_value += node.operand
 
         

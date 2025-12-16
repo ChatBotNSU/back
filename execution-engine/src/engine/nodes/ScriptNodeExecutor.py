@@ -83,8 +83,9 @@ class ScriptNodeExecutor:
 
         allowed = set(declared.keys())
         if resp.variables:
-            updates = {k: v for k, v in resp.variables.items() if k in allowed}
-            execution_state.variable_values.update(updates)
+            for k, v in resp.variables.items():
+                if k in allowed:
+                    execution_state.variable_values[k] = str(v)
 
         if getattr(resp, "removed_variables", None):
             for k in resp.removed_variables:
