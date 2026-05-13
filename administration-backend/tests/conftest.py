@@ -23,8 +23,9 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Dict
-
 import pytest
+from unittest.mock import MagicMock, patch
+import os
 
 
 # Insert the backend package onto sys.path so its bare-name imports
@@ -261,3 +262,64 @@ def client(app_and_user):
 def s3(app_and_user):
     from minio_controller.S3Client import S3Client
     return S3Client.get_instance()
+"""Pytest fixtures for administration-backend tests."""
+
+
+
+
+@pytest.fixture
+def mock_config():
+    """Mock configuration fixture."""
+    config = MagicMock()
+    config.server.host = "localhost"
+    config.server.port = 8000
+    config.db_service.host = "localhost"
+    config.db_service.port = 8001
+    config.authentication.secret_key = "test-secret-key"
+    config.authentication.algorithm = "HS256"
+    config.authentication.access_token_expiration_minutes = 30
+    config.s3.host = "localhost"
+    config.s3.port = 9000
+    config.s3.user = "test-user"
+    config.s3.password = "test-password"
+    return config
+
+
+@pytest.fixture
+def mock_minio_client():
+    """Mock Minio client fixture."""
+    with patch('minio_controller.S3Client.Minio') as MockMinio:
+        mock_client = MagicMock()
+        MockMinio.return_value = mock_client
+        mock_client.bucket_exists.return_value = True
+        yield mock_client
+
+
+@pytest.fixture
+def test_user():
+    """Test user data fixture."""
+    return {
+        "id": 1,
+        "name": "Test User",
+        "email": "test@example.com",
+        "hashed_password": "hashed_test_password"
+    }
+
+
+@pytest.fixture
+def test_chatbot():
+    """Test chatbot data fixture."""
+    return {
+        "bot_id": 1,
+        "bot_name": "Test Bot",
+        "variables": [],
+        "graph": {
+            "root": "node1",
+            "nodes": {
+                "node1": {
+                    "type": "text_answer",
+                    "text": "Hello"
+                }
+            }
+        }
+    }

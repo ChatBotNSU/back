@@ -13,6 +13,7 @@ test.
 """
 
 from __future__ import annotations
+"""Pytest configuration for telegram-execution tests."""
 
 import sys
 from pathlib import Path
@@ -110,3 +111,5 @@ def fresh_modules(monkeypatch):
     for name in list(sys.modules):
         if name.startswith(("api", "controller", "poller", "sender", "models", "config", "main")):
             sys.modules.pop(name, None)
+src_path = Path(__file__).parent.parent / "src"
+sys.path.insert(0, str(src_path))
