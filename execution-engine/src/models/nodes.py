@@ -58,3 +58,17 @@ class ConditionNode(Node):
     type: Literal["condition"] = "condition"
     branches: list[Branch]
     default_next_node_id: str
+
+class SubgraphCall(Node):
+    type: Literal["subgraph_call"] = "subgraph_call"
+    subgraph_name: str
+    # subgraph input parameter name -> caller variable name (kwargs-style).
+    # Pass-by-reference: modifications to the input name inside the subgraph are
+    # written back to the bound caller variable on return.
+    input_bindings: dict[str, str]
+    # subgraph exit label -> caller's next node id
+    exit_next_nodes: dict[str, str]
+
+class SubgraphExit(Node):
+    type: Literal["subgraph_exit"] = "subgraph_exit"
+    exit_label: str

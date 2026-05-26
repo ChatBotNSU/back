@@ -9,54 +9,68 @@ from .FailExecutor import FailExecutor
 logger = logging.getLogger("app")
 
 
+def _as_number(v):
+    if isinstance(v, bool):
+        raise ValueError("bool is not a number")
+    if isinstance(v, (int, float)):
+        return float(v)
+    return float(str(v))
+
+
 class SetVariableExecutor():
     async def execute(self, execution_state: RunTimeExecutionState, node: SetVariable, chatbot: Chatbot):
-        execution_state.executing_node_id = node.next_node_id
-        variable_type = ""
-        for variable in chatbot.variables:
-            if variable.name == node.assigned_variable:
-                variable_type = variable.type
-        
-        if variable_type == "":
-            FailExecutor().execute(execution_state, "Set variable executor: variable not found")
+        frame = execution_state.current_frame
+        frame.executing_node_id = node.next_node_id
+
+        name = node.assigned_variable
+        op = node.operation
+        operand = node.operand
+
+        # Plain assignment creates the variable if missing; preserves operand's type.
+        if op == "=":
+            frame.variable_values[name] = operand
             return
 
+        if name not in frame.variable_values:
+            FailExecutor().execute(
+                execution_state,
+                f"Set variable executor: variable '{name}' is not defined; cannot apply '{op}'",
+            )
+            return
 
-        variable_value = execution_state.variable_values[node.assigned_variable]
+        current = frame.variable_values[name]
 
-        if variable_type == "number":
+        if op == "+=":
+            # Try numeric add; fall back to string concat (Python-ish).
             try:
-                variable_value = float(variable_value)
-                node.operand = float(node.operand)
-            except:
-                FailExecutor().execute(execution_state, "Set variable executor: variable type mismatch", "USER")
+                frame.variable_values[name] = _as_number(current) + _as_number(operand)
+            except Exception:
+                try:
+                    frame.variable_values[name] = str(current) + str(operand)
+                except Exception:
+                    FailExecutor().execute(execution_state, f"Set variable executor: '+=' failed for '{name}'", "USER")
+            return
+
+        try:
+            left = _as_number(current)
+            right = _as_number(operand)
+        except Exception:
+            FailExecutor().execute(execution_state, f"Set variable executor: '{op}' requires numeric values for '{name}'", "USER")
+            return
+
+        if op == "-=":
+            frame.variable_values[name] = left - right
+        elif op == "*=":
+            frame.variable_values[name] = left * right
+        elif op == "/=":
+            if right == 0:
+                FailExecutor().execute(execution_state, f"Set variable executor: division by zero for '{name}'", "USER")
                 return
-            
-            if node.operation == "+=":
-                variable_value += node.operand
-            if node.operation == "=":
-                variable_value = node.operand
-            elif node.operation == "-=":
-                variable_value -= node.operand
-            elif node.operation == "/=":
-                variable_value /= node.operand
-            elif node.operation == "*=":
-                variable_value *= node.operand
-            elif node.operation == "%=":
-                variable_value %= node.operand
-        
+            frame.variable_values[name] = left / right
+        elif op == "%=":
+            if right == 0:
+                FailExecutor().execute(execution_state, f"Set variable executor: modulo by zero for '{name}'", "USER")
+                return
+            frame.variable_values[name] = left % right
         else:
-            try:
-                variable_value = str(variable_value)
-                node.operand = str(node.operand)
-            except:
-                FailExecutor().execute(execution_state, "Set variable executor: variable type mismatch", "USER")
-                return
-            
-            if node.operation == "=":
-                variable_value = node.operand
-            elif node.operation == "+=":
-                variable_value += node.operand
-
-        
-        execution_state.variable_values[node.assigned_variable] = variable_value
+            FailExecutor().execute(execution_state, f"Set variable executor: unknown operation '{op}'")

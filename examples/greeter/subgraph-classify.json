@@ -1,0 +1,21 @@
+{
+  "name": "classify",
+  "inputs": ["counter", "reply"],
+  "exits": ["done"],
+  "graph": {
+    "root": "s_thr",
+    "nodes": {
+      "s_thr": {"type": "set_variable", "assigned_variable": "thr", "operation": "=", "operand": 3.0, "next_node_id": "s_cond"},
+      "s_cond": {
+        "type": "condition",
+        "branches": [
+          {"condition": {"variable_left": "counter", "operation": "<", "variable_right": "thr"}, "next_node_id": "s_short"}
+        ],
+        "default_next_node_id": "s_long"
+      },
+      "s_short": {"type": "set_variable", "assigned_variable": "reply", "operation": "=", "operand": "новенький", "next_node_id": "s_exit"},
+      "s_long":  {"type": "set_variable", "assigned_variable": "reply", "operation": "=", "operand": "знакомый",  "next_node_id": "s_exit"},
+      "s_exit":  {"type": "subgraph_exit", "exit_label": "done"}
+    }
+  }
+}
