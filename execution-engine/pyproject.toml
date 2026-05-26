@@ -17,3 +17,17 @@ distribution = false
 [tool.pdm.scripts]
 serve.cmd = "python src/main.py"
 serve.env = {PYTHONPATH = "src"}
+test.cmd = "pytest tests/"
+test.env = {PYTHONPATH = "src"}
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "fakeredis>=2.20",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"

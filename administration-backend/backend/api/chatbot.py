@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from fastapi import Depends, APIRouter
 from api.middleware import get_current_active_user
 from entities.User import User
 from models.chatbot import Chatbot, ChatbotUnassigned
@@ -17,6 +18,7 @@ from db.chatbot_request import (
     get_version,
     list_versions,
 )
+
 from minio_controller.S3Client import S3Client
 from utils.graph_logic import GraphAssistant, detect_conflict
 

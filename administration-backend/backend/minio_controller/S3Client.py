@@ -6,10 +6,11 @@
 import io
 
 from minio import Minio
-from typing import Optional
+from typing import Optional, List
 import threading
 
 from models import Chatbot, ExecutionState
+from models.chatbot import Subgraph
 
 
 class S3Client:
@@ -77,3 +78,42 @@ class S3Client:
         obj_name = f"execution-{execution_id}.json"
         data = self.download(obj_name)
         return ExecutionState.model_validate_json(data)
+
+    # --- Subgraphs: user-scoped JSON files in S3. No DB row.
+    # Key format: subgraph-{user_id}-{name}.json
+
+    @staticmethod
+    def _subgraph_key(user_id: int, name: str) -> str:
+        return f"subgraph-{user_id}-{name}.json"
+
+    def upload_subgraph(self, user_id: int, subgraph: Subgraph):
+        obj_name = self._subgraph_key(user_id, subgraph.name)
+        data = subgraph.model_dump_json().encode("utf-8")
+        self.upload(obj_name, data)
+
+    def download_subgraph(self, user_id: int, name: str) -> Subgraph:
+        obj_name = self._subgraph_key(user_id, name)
+        data = self.download(obj_name)
+        return Subgraph.model_validate_json(data)
+
+    def delete_subgraph(self, user_id: int, name: str) -> None:
+        obj_name = self._subgraph_key(user_id, name)
+        self.client.remove_object(self.bucket, obj_name)
+
+    def list_subgraph_names(self, user_id: int) -> List[str]:
+        prefix = f"subgraph-{user_id}-"
+        suffix = ".json"
+        result: List[str] = []
+        for obj in self.client.list_objects(self.bucket, prefix=prefix, recursive=True):
+            key = obj.object_name
+            if key and key.startswith(prefix) and key.endswith(suffix):
+                result.append(key[len(prefix):-len(suffix)])
+        return result
+
+    def subgraph_exists(self, user_id: int, name: str) -> bool:
+        obj_name = self._subgraph_key(user_id, name)
+        try:
+            self.client.stat_object(self.bucket, obj_name)
+            return True
+        except Exception:
+            return False
