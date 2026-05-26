@@ -59,7 +59,15 @@ class S3Client:
         obj_name = f"chatbot-{chatbot_id}.json"
         data = self.download(obj_name)
         return Chatbot.model_validate_json(data)
-    
+
+    def upload_chatbot_by_key(self, s3_key: str, chatbot: Chatbot):
+        data = chatbot.model_dump_json().encode("utf-8")
+        self.upload(s3_key, data)
+
+    def download_chatbot_by_key(self, s3_key: str) -> Chatbot:
+        data = self.download(s3_key)
+        return Chatbot.model_validate_json(data)
+
 
     def upload_execution(self, execution_id: int, execution_state: ExecutionState):
         obj_name = f"execution-{execution_id}.json"
