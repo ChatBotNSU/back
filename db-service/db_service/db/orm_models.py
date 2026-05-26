@@ -73,6 +73,38 @@ class ChatbotVersion(Base):
     )
 
 
+class SubgraphVersion(Base):
+    """История версий пользовательских сабграфов.
+
+    Сам сабграф не имеет отдельной таблицы — он идентифицируется парой
+    (owner_user_id, subgraph_name). Эта таблица отслеживает только версии
+    его тела в S3.
+    """
+    __tablename__ = "subgraph_versions"
+
+    id: Mapped[int] = MappedColumn(primary_key=True)
+    owner_user_id: Mapped[int] = MappedColumn(ForeignKey("users.id"), nullable=False)
+    subgraph_name: Mapped[str] = MappedColumn(nullable=False)
+    parent_id: Mapped[Optional[int]] = MappedColumn(ForeignKey("subgraph_versions.id"), nullable=True)
+    s3_key: Mapped[str] = MappedColumn(nullable=False, unique=True)
+    status: Mapped[VersionStatusEnum] = MappedColumn(
+        Enum(VersionStatusEnum, native_enum=False, validate_strings=True),
+        nullable=False,
+        default=VersionStatusEnum.DRAFT,
+    )
+    author_id: Mapped[int] = MappedColumn(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = MappedColumn(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    parent: Mapped[Optional["SubgraphVersion"]] = relationship(
+        remote_side="SubgraphVersion.id",
+        foreign_keys=[parent_id],
+    )
+
+
 class TelegramExecution(Base):
     __tablename__ = "telegram_executions"
 

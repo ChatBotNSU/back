@@ -101,7 +101,14 @@ def app_and_user(_install_minio_fake, monkeypatch):
     from entities.User import User
 
     # Stub the db-service HTTP helpers AFTER import (api.chatbot pulled the names by value).
-    state: Dict[str, Any] = {"chatbots": {}, "next_id": 100}
+    # The state dict mimics db-service: chatbots metadata + a chatbot_versions table.
+    from datetime import datetime, timezone
+    state: Dict[str, Any] = {
+        "chatbots": {},
+        "next_id": 100,
+        "versions": {},       # version_id -> version record
+        "next_version_id": 1,
+    }
 
     async def fake_create_chatbot(user_id, name, description):
         bot_id = state["next_id"]
@@ -116,12 +123,127 @@ def app_and_user(_install_minio_fake, monkeypatch):
     async def fake_delete_chatbot(bot_id):
         return state["chatbots"].pop(bot_id, None)
 
+    async def fake_create_version(chatbot_id, author_id, s3_key, parent_id=None, status="DRAFT"):
+        vid = state["next_version_id"]
+        state["next_version_id"] += 1
+        record = {
+            "id": vid,
+            "chatbot_id": chatbot_id,
+            "parent_id": parent_id,
+            "s3_key": s3_key,
+            "status": status,
+            "author_id": author_id,
+            "created_at": datetime.now(tz=timezone.utc).isoformat(),
+        }
+        state["versions"][vid] = record
+        return record
+
+    async def fake_get_latest_version(chatbot_id):
+        candidates = [v for v in state["versions"].values() if v["chatbot_id"] == chatbot_id]
+        if not candidates:
+            return None
+        # Newest by id (monotonic in this stub, mirrors created_at DESC in real db).
+        return max(candidates, key=lambda v: v["id"])
+
+    async def fake_get_version(version_id):
+        return state["versions"].get(version_id)
+
+    async def fake_list_versions(chatbot_id):
+        candidates = [v for v in state["versions"].values() if v["chatbot_id"] == chatbot_id]
+        return sorted(candidates, key=lambda v: v["id"], reverse=True)
+
     import api.chatbot as api_chatbot
     import db.chatbot_request as db_chatbot
+    stubs = {
+        "create_chatbot":     fake_create_chatbot,
+        "get_chatbots":       fake_get_chatbots,
+        "delete_chatbot":     fake_delete_chatbot,
+        "create_version":     fake_create_version,
+        "get_latest_version": fake_get_latest_version,
+        "get_version":        fake_get_version,
+        "list_versions":      fake_list_versions,
+    }
     for mod in (api_chatbot, db_chatbot):
-        monkeypatch.setattr(mod, "create_chatbot", fake_create_chatbot, raising=False)
-        monkeypatch.setattr(mod, "get_chatbots", fake_get_chatbots, raising=False)
-        monkeypatch.setattr(mod, "delete_chatbot", fake_delete_chatbot, raising=False)
+        for name, fn in stubs.items():
+            monkeypatch.setattr(mod, name, fn, raising=False)
+
+    # ── Subgraph versions: identity is (owner_user_id, subgraph_name).
+    state["subgraph_versions"] = {}        # vid -> record
+    state["next_subgraph_version_id"] = 1
+
+    async def fake_sub_create_version(owner_user_id, subgraph_name, author_id, s3_key, parent_id=None, status="DRAFT"):
+        vid = state["next_subgraph_version_id"]
+        state["next_subgraph_version_id"] += 1
+        record = {
+            "id": vid,
+            "owner_user_id": owner_user_id,
+            "subgraph_name": subgraph_name,
+            "parent_id": parent_id,
+            "s3_key": s3_key,
+            "status": status,
+            "author_id": author_id,
+            "created_at": datetime.now(tz=timezone.utc).isoformat(),
+        }
+        state["subgraph_versions"][vid] = record
+        return record
+
+    async def fake_sub_get_latest_version(owner_user_id, subgraph_name):
+        candidates = [
+            v for v in state["subgraph_versions"].values()
+            if v["owner_user_id"] == owner_user_id and v["subgraph_name"] == subgraph_name
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda v: v["id"])
+
+    async def fake_sub_get_version(version_id):
+        return state["subgraph_versions"].get(version_id)
+
+    async def fake_sub_list_versions(owner_user_id, subgraph_name):
+        candidates = [
+            v for v in state["subgraph_versions"].values()
+            if v["owner_user_id"] == owner_user_id and v["subgraph_name"] == subgraph_name
+        ]
+        return sorted(candidates, key=lambda v: v["id"], reverse=True)
+
+    async def fake_sub_list_names(owner_user_id):
+        names = {
+            v["subgraph_name"]
+            for v in state["subgraph_versions"].values()
+            if v["owner_user_id"] == owner_user_id
+        }
+        return sorted(names)
+
+    async def fake_sub_delete(owner_user_id, subgraph_name):
+        keys_to_drop = [
+            k for k, v in state["subgraph_versions"].items()
+            if v["owner_user_id"] == owner_user_id and v["subgraph_name"] == subgraph_name
+        ]
+        for k in keys_to_drop:
+            del state["subgraph_versions"][k]
+        return {"deleted_versions": len(keys_to_drop)}
+
+    import api.subgraph as api_subgraph
+    import db.subgraph_request as db_subgraph
+    sub_stubs = {
+        "create_version":      fake_sub_create_version,
+        "get_latest_version":  fake_sub_get_latest_version,
+        "get_version":         fake_sub_get_version,
+        "list_versions":       fake_sub_list_versions,
+        "list_subgraph_names": fake_sub_list_names,
+        "delete_subgraph":     fake_sub_delete,
+    }
+    # api.subgraph imported list_subgraph_names/delete_subgraph under aliases.
+    for mod in (db_subgraph,):
+        for name, fn in sub_stubs.items():
+            monkeypatch.setattr(mod, name, fn, raising=False)
+    # api.subgraph imports aliases — patch those too.
+    monkeypatch.setattr(api_subgraph, "create_version",         fake_sub_create_version,     raising=False)
+    monkeypatch.setattr(api_subgraph, "get_latest_version",     fake_sub_get_latest_version, raising=False)
+    monkeypatch.setattr(api_subgraph, "get_version",            fake_sub_get_version,        raising=False)
+    monkeypatch.setattr(api_subgraph, "list_versions",          fake_sub_list_versions,      raising=False)
+    monkeypatch.setattr(api_subgraph, "db_list_subgraph_names", fake_sub_list_names,         raising=False)
+    monkeypatch.setattr(api_subgraph, "db_delete_subgraph",     fake_sub_delete,             raising=False)
 
     fake_user = User(id=42, name="Tester", email="tester@example.com", hashed_password="x")
     main.app.dependency_overrides[get_current_active_user] = lambda: fake_user

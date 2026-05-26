@@ -57,7 +57,12 @@ def test_list_subgraphs(client):
 def test_update_subgraph(client):
     client.post("/api/v1/subgraph/subgraphs", json=SAMPLE_SUBGRAPH)
     updated = {**SAMPLE_SUBGRAPH, "exits": ["small", "big", "extra"]}
-    r = client.put("/api/v1/subgraph/subgraph/if_part", json=updated)
+    # PUT now expects a SaveSubgraphRequest envelope; `force=True` skips
+    # conflict detection (not exercised here — see test_subgraph_versioning.py).
+    r = client.put(
+        "/api/v1/subgraph/subgraph/if_part",
+        json={"subgraph": updated, "force": True},
+    )
     assert r.status_code == 200, r.text
     assert r.json()["exits"] == ["small", "big", "extra"]
 
@@ -68,7 +73,10 @@ def test_update_subgraph(client):
 def test_update_name_mismatch(client):
     client.post("/api/v1/subgraph/subgraphs", json=SAMPLE_SUBGRAPH)
     wrong = {**SAMPLE_SUBGRAPH, "name": "other_name"}
-    r = client.put("/api/v1/subgraph/subgraph/if_part", json=wrong)
+    r = client.put(
+        "/api/v1/subgraph/subgraph/if_part",
+        json={"subgraph": wrong, "force": True},
+    )
     assert r.status_code == 400
 
 
@@ -83,7 +91,11 @@ def test_delete_subgraph(client):
 
 def test_missing_subgraph_returns_404(client):
     assert client.get("/api/v1/subgraph/subgraph/nope").status_code == 404
-    assert client.put("/api/v1/subgraph/subgraph/nope", json={**SAMPLE_SUBGRAPH, "name": "nope"}).status_code == 404
+    r = client.put(
+        "/api/v1/subgraph/subgraph/nope",
+        json={"subgraph": {**SAMPLE_SUBGRAPH, "name": "nope"}, "force": True},
+    )
+    assert r.status_code == 404
     assert client.delete("/api/v1/subgraph/subgraph/nope").status_code == 404
 
 

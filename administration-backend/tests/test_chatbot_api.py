@@ -71,8 +71,6 @@ def test_create_chatbot_and_fetch(client, s3):
     bot_id = created["bot_id"]
     assert bot_id >= 100  # from the fake db service
 
-    # S3 has the chatbot under its id.
-    assert s3.subgraph_exists is not None  # smoke
     r = client.get(f"/api/v1/chatbot/chatbot/{bot_id}")
     assert r.status_code == 200, r.text
     assert r.json()["bot_id"] == bot_id
@@ -96,8 +94,13 @@ def test_chatbot_round_trip_after_update(client):
     initial = _make_chatbot_payload(with_subgraph=False)
     bot_id = client.post("/api/v1/chatbot/chatbots", json=initial).json()["bot_id"]
 
+    # Update now wraps the chatbot in a SaveChatbotRequest envelope (versioning).
+    # `force=True` skips conflict detection — fine here, we're not testing merges.
     updated = _make_chatbot_payload(with_subgraph=True)
-    r = client.post(f"/api/v1/chatbot/chatbot/{bot_id}", json=updated)
+    r = client.post(
+        f"/api/v1/chatbot/chatbot/{bot_id}",
+        json={"chatbot": updated, "force": True},
+    )
     assert r.status_code == 200, r.text
 
     fetched = client.get(f"/api/v1/chatbot/chatbot/{bot_id}").json()

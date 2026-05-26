@@ -79,41 +79,14 @@ class S3Client:
         data = self.download(obj_name)
         return ExecutionState.model_validate_json(data)
 
-    # --- Subgraphs: user-scoped JSON files in S3. No DB row.
-    # Key format: subgraph-{user_id}-{name}.json
+    # --- Subgraphs: user-scoped JSON files in S3, versioned by s3_key.
+    # Each version is its own object under `subgraphs/{user_id}/{name}/v_{ts}.json`.
+    # Identity in the DB is (owner_user_id, subgraph_name); S3 just stores blobs.
 
-    @staticmethod
-    def _subgraph_key(user_id: int, name: str) -> str:
-        return f"subgraph-{user_id}-{name}.json"
-
-    def upload_subgraph(self, user_id: int, subgraph: Subgraph):
-        obj_name = self._subgraph_key(user_id, subgraph.name)
+    def upload_subgraph_by_key(self, s3_key: str, subgraph: Subgraph):
         data = subgraph.model_dump_json().encode("utf-8")
-        self.upload(obj_name, data)
+        self.upload(s3_key, data)
 
-    def download_subgraph(self, user_id: int, name: str) -> Subgraph:
-        obj_name = self._subgraph_key(user_id, name)
-        data = self.download(obj_name)
+    def download_subgraph_by_key(self, s3_key: str) -> Subgraph:
+        data = self.download(s3_key)
         return Subgraph.model_validate_json(data)
-
-    def delete_subgraph(self, user_id: int, name: str) -> None:
-        obj_name = self._subgraph_key(user_id, name)
-        self.client.remove_object(self.bucket, obj_name)
-
-    def list_subgraph_names(self, user_id: int) -> List[str]:
-        prefix = f"subgraph-{user_id}-"
-        suffix = ".json"
-        result: List[str] = []
-        for obj in self.client.list_objects(self.bucket, prefix=prefix, recursive=True):
-            key = obj.object_name
-            if key and key.startswith(prefix) and key.endswith(suffix):
-                result.append(key[len(prefix):-len(suffix)])
-        return result
-
-    def subgraph_exists(self, user_id: int, name: str) -> bool:
-        obj_name = self._subgraph_key(user_id, name)
-        try:
-            self.client.stat_object(self.bucket, obj_name)
-            return True
-        except Exception:
-            return False
