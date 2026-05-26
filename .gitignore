@@ -1,0 +1,74 @@
+# ---- IDE / editor ----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---- Claude / agent runtime ----
+.claude/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+pip-wheel-metadata/
+
+# PDM
+.pdm-python
+.pdm-build/
+__pypackages__/
+
+# ---- Testing / coverage ----
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+
+# ---- Env / secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Docker / runtime data ----
+*.pid
+*.log
+pg_data/
+minio_data/
+
+# ---- Project artifacts that aren't source ----
+# locally-built/exported JSON bot/execution dumps in the repo root
+/chatbot-*.json
+/execution-*.json
+
+# Anything a contributor scratched in examples/ as a private throwaway
+examples/_scratch/
+examples/*/_local_*

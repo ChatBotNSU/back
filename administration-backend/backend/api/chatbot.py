@@ -1,11 +1,10 @@
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, APIRouter
+from fastapi import Depends, APIRouter
 from api.middleware import get_current_active_user
 from entities.User import User
 from models.chatbot import Chatbot, ChatbotUnassigned
 
-from api.auth import router as auth_router
 from db.chatbot_request import get_chatbots, create_chatbot, delete_chatbot
 
 from minio_controller.S3Client import S3Client

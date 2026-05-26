@@ -1,0 +1,33 @@
+{
+  "bot_id": 2,
+  "bot_name": "branching",
+  "graph": {
+    "root": "n_seed_counter",
+    "nodes": {
+      "n_seed_counter": {"type": "set_variable", "assigned_variable": "counter", "operation": "=", "operand": 0.0, "next_node_id": "n_read"},
+      "n_read":         {"type": "text_answer", "assigned_variable": "user_text", "next_node_id": "n_bump"},
+      "n_bump":         {"type": "set_variable", "assigned_variable": "counter", "operation": "+=", "operand": 1.0, "next_node_id": "n_thr"},
+      "n_thr":          {"type": "set_variable", "assigned_variable": "thr", "operation": "=", "operand": 3.0, "next_node_id": "n_cond"},
+      "n_cond": {
+        "type": "condition",
+        "branches": [
+          {"condition": {"variable_left": "counter", "operation": "<", "variable_right": "thr"}, "next_node_id": "n_msg_short"}
+        ],
+        "default_next_node_id": "n_msg_long"
+      },
+      "n_msg_short": {
+        "type": "set_message",
+        "text": "Сообщение #{counter}: ещё привыкаем друг к другу.",
+        "audios": [], "images": [], "files": [], "choise_options": [],
+        "next_node_id": "n_send"
+      },
+      "n_msg_long": {
+        "type": "set_message",
+        "text": "Сообщение #{counter}: уже хорошо знаем друг друга.",
+        "audios": [], "images": [], "files": [], "choise_options": [],
+        "next_node_id": "n_send"
+      },
+      "n_send": {"type": "send_message", "next_node_id": "n_read"}
+    }
+  }
+}

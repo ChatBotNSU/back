@@ -17,3 +17,16 @@ distribution = false
 [tool.pdm.scripts]
 serve.cmd = "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
 serve.env = {PYTHONPATH = "backend"}
+test.cmd = "pytest tests/"
+test.env = {PYTHONPATH = "backend"}
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["backend"]
+asyncio_mode = "auto"

@@ -3,7 +3,7 @@ import logging
 from .engine import Engine
 from minio_controller.S3Client import S3Client
 
-from models.execution_state import ExecutionState
+from models.execution_state import ExecutionState, Frame
 
 
 logger = logging.getLogger("app")
@@ -26,13 +26,15 @@ class EngineFactory:
         s3client = S3Client.get_instance()
 
         chatbot = s3client.download_chatbot(chatbot_id)
+        root_frame = Frame(
+            subgraph_name=None,
+            executing_node_id=chatbot.graph.root,
+            variable_values={},
+        )
         execution = ExecutionState(
             bot_id=chatbot_id,
             execution_id=execution_id,
-            executing_node_id=chatbot.graph.root,
-            variable_values={variable.name : 
-                             "" if variable.type=="string" else 0 
-                             for variable in chatbot.variables}
+            call_stack=[root_frame],
         )
 
         engine = Engine(chatbot, execution)

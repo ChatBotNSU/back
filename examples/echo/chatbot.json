@@ -1,0 +1,17 @@
+{
+  "bot_id": 1,
+  "bot_name": "echo",
+  "graph": {
+    "root": "n_read",
+    "nodes": {
+      "n_read":  {"type": "text_answer", "assigned_variable": "user_text", "next_node_id": "n_reply"},
+      "n_reply": {
+        "type": "set_message",
+        "text": "Ты написал: {user_text}",
+        "audios": [], "images": [], "files": [], "choise_options": [],
+        "next_node_id": "n_send"
+      },
+      "n_send":  {"type": "send_message", "next_node_id": "n_read"}
+    }
+  }
+}
