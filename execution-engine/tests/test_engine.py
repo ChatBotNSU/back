@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from engine.engine import Engine, node_executors
 from engine.engine_factory import EngineFactory
-from models.execution_state import ExecutionState, InMessage, OutMessage, RunTimeExecutionState
-from models.chatbot import Chatbot, Variable, Graph
+from models.execution_state import ExecutionState, InMessage, OutMessage, RunTimeExecutionState, Frame
+from models.chatbot import Chatbot, Graph
 from models.nodes import TextAnswer, SendMessage
 
 
@@ -17,21 +17,26 @@ class TestEngine:
         chatbot = Chatbot(
             bot_id=1,
             bot_name="Test",
-            variables=[Variable(name="user_name", type="string")],
             graph=Graph(
                 root="node_1",
                 nodes={
                     "node_1": TextAnswer(assigned_variable="user_name", next_node_id="node_2"),
                     "node_2": SendMessage(next_node_id="node_3")
                 }
-            )
+            ),
+            subgraphs={}
         )
 
         execution_state = ExecutionState(
             bot_id=1,
             execution_id=1,
-            executing_node_id="node_1",
-            variable_values={"user_name": ""}
+            call_stack=[
+                Frame(
+                    subgraph_name=None,
+                    executing_node_id="node_1",
+                    variable_values={"user_name": ""}
+                )
+            ]
         )
 
         engine = Engine(chatbot, execution_state)
@@ -41,18 +46,18 @@ class TestEngine:
         # Mock the text_answer executor
         original_executor = node_executors["text_answer"]
         mock_executor = AsyncMock()
-        
+
         async def mock_execute(state, node, bot):
-            state.variable_values["user_name"] = "John"
-            state.executing_node_id = "node_2"
-        
+            state.call_stack[-1].variable_values["user_name"] = "John"
+            state.call_stack[-1].executing_node_id = "node_2"
+
         mock_executor.execute = mock_execute
-        
+
         with patch.dict('engine.engine.node_executors', {"text_answer": mock_executor}, clear=False):
             with patch.object(engine, 'runtime_execution_state', None, create=True):
                 result = await engine.execute(message)
 
-                assert engine.runtime_execution_state.variable_values["user_name"] == "John"
+                assert engine.runtime_execution_state.call_stack[-1].variable_values["user_name"] == "John"
 
     @pytest.mark.asyncio
     async def test_execute_unknown_node_type(self):
@@ -61,11 +66,11 @@ class TestEngine:
         chatbot = Chatbot(
             bot_id=1,
             bot_name="Test",
-            variables=[],
             graph=Graph(
                 root="node_1",
                 nodes={}
-            )
+            ),
+            subgraphs={}
         )
         # Add unknown node directly to graph
         chatbot.graph.nodes["node_1"] = MagicMock()
@@ -74,8 +79,13 @@ class TestEngine:
         execution_state = ExecutionState(
             bot_id=1,
             execution_id=1,
-            executing_node_id="node_1",
-            variable_values={}
+            call_stack=[
+                Frame(
+                    subgraph_name=None,
+                    executing_node_id="node_1",
+                    variable_values={}
+                )
+            ]
         )
 
         engine = Engine(chatbot, execution_state)
@@ -93,20 +103,25 @@ class TestEngine:
         chatbot = Chatbot(
             bot_id=1,
             bot_name="Test",
-            variables=[],
             graph=Graph(
                 root="node_1",
                 nodes={
                     "node_1": SendMessage(next_node_id="node_2")
                 }
-            )
+            ),
+            subgraphs={}
         )
 
         execution_state = ExecutionState(
             bot_id=1,
             execution_id=1,
-            executing_node_id="node_1",
-            variable_values={}
+            call_stack=[
+                Frame(
+                    subgraph_name=None,
+                    executing_node_id="node_1",
+                    variable_values={}
+                )
+            ]
         )
 
         engine = Engine(chatbot, execution_state)
@@ -161,8 +176,8 @@ class TestEngineFactory:
         chatbot = Chatbot(
             bot_id=1,
             bot_name="Test",
-            variables=[Variable(name="test_var", type="string")],
-            graph=Graph(root="node_1", nodes={})
+            graph=Graph(root="node_1", nodes={}),
+            subgraphs={}
         )
 
         with patch.object(S3Client, 'download_chatbot', return_value=chatbot):
@@ -195,8 +210,8 @@ class TestEngineFactory:
         chatbot = Chatbot(
             bot_id=1,
             bot_name="Test",
-            variables=[Variable(name="test_var", type="string")],
-            graph=Graph(root="node_1", nodes={})
+            graph=Graph(root="node_1", nodes={}),
+            subgraphs={}
         )
 
         with patch.object(S3Client, 'download_chatbot', return_value=chatbot):

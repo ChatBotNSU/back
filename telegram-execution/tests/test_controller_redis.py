@@ -3,19 +3,19 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-# Мокируем asyncio.create_task до импорта чтобы избежать asyncio ошибок
-with patch('asyncio.create_task'):
-    from controller.redis import get_redis
-
 
 class TestGetRedis:
     """Tests for get_redis function."""
 
-    def setup_method(self):
+    @pytest.fixture(autouse=True)
+    def reset_redis_module(self, fresh_modules):
         """Reset global _redis before each test."""
         import controller.redis as redis_module
         redis_module._redis = None
+        yield
+        redis_module._redis = None
 
+    @pytest.mark.usefixtures("fresh_modules")
     @patch('controller.redis.Redis')
     @patch('controller.redis.get_config')
     def test_get_redis_creates_connection(self, mock_get_config, mock_redis_class):
@@ -29,6 +29,7 @@ class TestGetRedis:
         mock_redis_class.return_value = mock_redis_instance
 
         # When
+        from controller.redis import get_redis
         result = get_redis()
 
         # Then
@@ -39,6 +40,7 @@ class TestGetRedis:
         )
         assert result is mock_redis_instance
 
+    @pytest.mark.usefixtures("fresh_modules")
     @patch('controller.redis.Redis')
     @patch('controller.redis.get_config')
     def test_get_redis_reuses_connection(self, mock_get_config, mock_redis_class):
@@ -52,6 +54,7 @@ class TestGetRedis:
         mock_redis_class.return_value = mock_redis_instance
 
         # When
+        from controller.redis import get_redis
         first_call = get_redis()
         second_call = get_redis()
 
@@ -60,6 +63,7 @@ class TestGetRedis:
         assert first_call is second_call
         assert first_call is mock_redis_instance
 
+    @pytest.mark.usefixtures("fresh_modules")
     @patch('controller.redis.Redis')
     @patch('controller.redis.get_config')
     def test_get_redis_uses_config_values(self, mock_get_config, mock_redis_class):
@@ -73,6 +77,7 @@ class TestGetRedis:
         mock_redis_class.return_value = mock_redis_instance
 
         # When
+        from controller.redis import get_redis
         get_redis()
 
         # Then

@@ -1,9 +1,19 @@
 import pytest
 from unittest.mock import MagicMock, patch
 import httpx
+import sys
+from pathlib import Path
 
-from sandbox_runner.client import PyRunnerClient, DEFAULT_URL
+# Import real PyRunnerClient and schemas from src/
+SRC_DIR = Path(__file__).resolve().parents[1] / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from sandbox_runner.client import PyRunnerClient
 from sandbox_runner.schemas import RunResponse, RunRequest
+
+# DEFAULT_URL may not be exported - define locally for tests
+DEFAULT_URL = "http://py-runner:8080/run"
 
 
 class TestPyRunnerClientInit:

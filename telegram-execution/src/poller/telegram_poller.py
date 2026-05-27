@@ -4,7 +4,7 @@ from typing import Dict, Optional
 
 import aiohttp
 from aiogram import Bot, Dispatcher
-from aiogram.types import Update
+from aiogram.types import Update, CallbackQuery
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from fastapi import HTTPException

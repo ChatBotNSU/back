@@ -5,11 +5,6 @@ import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# Мокируем asyncio.create_task до импорта чтобы избежать запуска poll_responses()
-with patch('asyncio.create_task'):
-    from controller.redis_streams import RedisStreamsController
-    from models.redis_io_streams import ExecutionRequest, ExecutionResponse, InMessage, OutMessage
-
 
 @pytest.fixture
 def mock_config():
@@ -30,8 +25,9 @@ def mock_redis():
 
 
 @pytest.fixture
-def controller(mock_config, mock_redis):
+def controller(mock_config, mock_redis, fresh_modules):
     """Create RedisStreamsController with mocked dependencies."""
+    from controller.redis_streams import RedisStreamsController
     with patch('controller.redis_streams.get_config', return_value=mock_config):
         with patch('controller.redis_streams.get_redis', return_value=mock_redis):
             with patch('controller.redis_streams.TelegramResponseSender') as mock_sender:
@@ -46,8 +42,9 @@ def controller(mock_config, mock_redis):
 class TestRedisStreamsControllerInit:
     """Tests for RedisStreamsController initialization."""
 
-    def test_initialization(self, mock_config, mock_redis):
+    def test_initialization(self, mock_config, mock_redis, fresh_modules):
         # Given
+        from controller.redis_streams import RedisStreamsController
         with patch('controller.redis_streams.get_config', return_value=mock_config):
             with patch('controller.redis_streams.get_redis', return_value=mock_redis):
                 with patch('controller.redis_streams.TelegramResponseSender'):
@@ -60,16 +57,18 @@ class TestRedisStreamsControllerInit:
                     assert ctrl.group == "test_group"
                     assert ctrl.consumer == "test_consumer"
 
-    def test_singleton_not_initialized(self):
+    def test_singleton_not_initialized(self, fresh_modules):
         # Given
+        from controller.redis_streams import RedisStreamsController
         RedisStreamsController._instance = None
 
         # When / Then
         with pytest.raises(RuntimeError, match="not initialized"):
             RedisStreamsController.get_instance()
 
-    def test_singleton_get_instance(self, controller):
+    def test_singleton_get_instance(self, controller, fresh_modules):
         # When
+        from controller.redis_streams import RedisStreamsController
         instance = RedisStreamsController.get_instance()
 
         # Then
@@ -80,8 +79,9 @@ class TestPutMessage:
     """Tests for put_message method."""
 
     @pytest.mark.asyncio
-    async def test_put_message(self, controller, mock_redis):
+    async def test_put_message(self, controller, mock_redis, fresh_modules):
         # Given
+        from models.redis_io_streams import ExecutionRequest, InMessage
         request = ExecutionRequest(
             execution_id=1,
             chatbot_id=100,
@@ -103,8 +103,9 @@ class TestPutMessage:
         assert parsed["message"]["text"] == "Test message"
 
     @pytest.mark.asyncio
-    async def test_put_message_with_restart(self, controller, mock_redis):
+    async def test_put_message_with_restart(self, controller, mock_redis, fresh_modules):
         # Given
+        from models.redis_io_streams import ExecutionRequest, InMessage
         request = ExecutionRequest(
             execution_id=2,
             chatbot_id=50,

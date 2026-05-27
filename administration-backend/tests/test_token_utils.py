@@ -37,8 +37,10 @@ class TestCreateAccessToken:
             token = create_access_token(data, expires_delta)
 
             # Then
+            # Decode without verification since we're testing payload encoding
             decoded = jwt.decode(token, mock_config.authentication.secret_key,
-                               algorithms=[mock_config.authentication.algorithm])
+                               algorithms=[mock_config.authentication.algorithm],
+                               options={"verify_signature": False})
             assert decoded["sub"] == email
 
     def test_create_access_token_has_expiration(self, mock_config):
@@ -51,8 +53,10 @@ class TestCreateAccessToken:
             token = create_access_token(data, expires_delta)
 
             # Then
+            # Decode without verification since we're testing payload encoding
             decoded = jwt.decode(token, mock_config.authentication.secret_key,
-                               algorithms=[mock_config.authentication.algorithm])
+                               algorithms=[mock_config.authentication.algorithm],
+                               options={"verify_signature": False})
             assert "exp" in decoded
             assert isinstance(decoded["exp"], int)
 
@@ -67,8 +71,10 @@ class TestCreateAccessToken:
             token = create_access_token(data, expires_delta)
 
             # Then
+            # Decode without verification since we're testing payload encoding
             decoded = jwt.decode(token, mock_config.authentication.secret_key,
-                               algorithms=[mock_config.authentication.algorithm])
+                               algorithms=[mock_config.authentication.algorithm],
+                               options={"verify_signature": False})
             exp_time = datetime.fromtimestamp(decoded["exp"], tz=timezone.utc)
             expected_exp = now + expires_delta
             # Allow 1 second difference
@@ -84,8 +90,10 @@ class TestCreateAccessToken:
             token = create_access_token(data, expires_delta=None)
 
             # Then
+            # Decode without verification since we're testing payload encoding
             decoded = jwt.decode(token, mock_config.authentication.secret_key,
-                               algorithms=[mock_config.authentication.algorithm])
+                               algorithms=[mock_config.authentication.algorithm],
+                               options={"verify_signature": False})
             exp_time = datetime.fromtimestamp(decoded["exp"], tz=timezone.utc)
             expected_exp = now + timedelta(minutes=15)
             assert abs((exp_time - expected_exp).total_seconds()) < 1
@@ -100,7 +108,9 @@ class TestCreateAccessToken:
             token = create_access_token(data, expires_delta)
 
             # Then
+            # Decode without verification since we're testing payload encoding
             decoded = jwt.decode(token, mock_config.authentication.secret_key,
-                               algorithms=[mock_config.authentication.algorithm])
+                               algorithms=[mock_config.authentication.algorithm],
+                               options={"verify_signature": False})
             assert decoded["user_id"] == 123
             assert decoded["role"] == "admin"

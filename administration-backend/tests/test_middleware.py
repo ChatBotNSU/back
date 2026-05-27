@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from fastapi import HTTPException, status
 from jwt.exceptions import InvalidTokenError
 
-from api.middleware import get_current_user, get_current_active_user
-from entities.User import User
-from entities.Token import TokenData
+from backend.api.middleware import get_current_user, get_current_active_user
+from backend.entities.User import User
+from backend.entities.Token import TokenData
 
 
 class TestGetCurrentUser:
@@ -19,9 +19,9 @@ class TestGetCurrentUser:
         token = "valid_token"
         mock_user = User(id=1, name="Test", email="test@example.com", hashed_password="hash")
 
-        with patch('api.middleware.jwt.decode', return_value={"sub": "test@example.com"}):
-            with patch('api.middleware.get_user', return_value=mock_user):
-                with patch('api.middleware.config', mock_config):
+        with patch('backend.api.middleware.jwt.decode', return_value={"sub": "test@example.com"}):
+            with patch('backend.api.middleware.get_user', return_value=mock_user):
+                with patch('backend.api.middleware.config', mock_config):
                     # When
                     result = await get_current_user(token)
 
@@ -33,8 +33,8 @@ class TestGetCurrentUser:
         # Given
         token = "invalid_token"
 
-        with patch('api.middleware.jwt.decode', side_effect=InvalidTokenError()):
-            with patch('api.middleware.config', mock_config):
+        with patch('backend.api.middleware.jwt.decode', side_effect=InvalidTokenError()):
+            with patch('backend.api.middleware.config', mock_config):
                 # When/Then
                 with pytest.raises(HTTPException) as exc_info:
                     await get_current_user(token)
@@ -47,8 +47,8 @@ class TestGetCurrentUser:
         # Given
         token = "token_without_sub"
 
-        with patch('api.middleware.jwt.decode', return_value={}):
-            with patch('api.middleware.config', mock_config):
+        with patch('backend.api.middleware.jwt.decode', return_value={}):
+            with patch('backend.api.middleware.config', mock_config):
                 # When/Then
                 with pytest.raises(HTTPException) as exc_info:
                     await get_current_user(token)
@@ -60,9 +60,9 @@ class TestGetCurrentUser:
         # Given
         token = "valid_token"
 
-        with patch('api.middleware.jwt.decode', return_value={"sub": "test@example.com"}):
-            with patch('api.middleware.get_user', return_value=None):
-                with patch('api.middleware.config', mock_config):
+        with patch('backend.api.middleware.jwt.decode', return_value={"sub": "test@example.com"}):
+            with patch('backend.api.middleware.get_user', return_value=None):
+                with patch('backend.api.middleware.config', mock_config):
                     # When/Then
                     with pytest.raises(HTTPException) as exc_info:
                         await get_current_user(token)

@@ -3,8 +3,8 @@ from unittest.mock import patch, MagicMock, mock_open
 import io
 
 from minio_controller.S3Client import S3Client
-from models.chatbot import Chatbot, Variable, Graph
-from models.execution_state import ExecutionState
+from models.chatbot import Chatbot, Graph
+from models.execution_state import ExecutionState, Frame
 
 
 class TestS3ClientInit:
@@ -108,8 +108,8 @@ class TestS3ClientUpload:
         chatbot = Chatbot(
             bot_id=1,
             bot_name="Test Bot",
-            variables=[Variable(name="test_var", type="string")],
-            graph=Graph(root="node_1", nodes={})
+            graph=Graph(root="node_1", nodes={}),
+            subgraphs={}
         )
 
         client.upload_chatbot(1, chatbot)
@@ -134,8 +134,7 @@ class TestS3ClientUpload:
         execution = ExecutionState(
             bot_id=1,
             execution_id=100,
-            executing_node_id="node_1",
-            variable_values={"var": "value"}
+            call_stack=[Frame(subgraph_name=None, executing_node_id="node_1", variable_values={"var": "value"})]
         )
 
         client.upload_execution(100, execution)
@@ -186,8 +185,8 @@ class TestS3ClientDownload:
         chatbot_json = Chatbot(
             bot_id=1,
             bot_name="Test Bot",
-            variables=[Variable(name="test_var", type="string")],
-            graph=Graph(root="node_1", nodes={})
+            graph=Graph(root="node_1", nodes={}),
+            subgraphs={}
         ).model_dump_json().encode("utf-8")
 
         mock_response = MagicMock()
@@ -216,8 +215,7 @@ class TestS3ClientDownload:
         execution_json = ExecutionState(
             bot_id=1,
             execution_id=100,
-            executing_node_id="node_1",
-            variable_values={"var": "value"}
+            call_stack=[Frame(subgraph_name=None, executing_node_id="node_1", variable_values={"var": "value"})]
         ).model_dump_json().encode("utf-8")
 
         mock_response = MagicMock()
@@ -228,4 +226,4 @@ class TestS3ClientDownload:
 
         assert isinstance(execution, ExecutionState)
         assert execution.execution_id == 100
-        assert execution.executing_node_id == "node_1"
+        assert execution.call_stack[-1].executing_node_id == "node_1"

@@ -14,8 +14,8 @@ import pytest
 from unittest.mock import MagicMock, patch
 import json
 
-from models.chatbot import Chatbot, Variable
-from models.execution_state import ExecutionState, InMessage, OutMessage
+from models.chatbot import Chatbot
+from models.execution_state import ExecutionState, InMessage, OutMessage, Frame
 from models.nodes import TextAnswer, SetMessage, SetVariable, SendMessage, ConditionNode, ScriptExecution, Wait, FileAnswer
 
 
@@ -25,19 +25,8 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 
-# Stub out sandbox_runner so ScriptNodeExecutor can be imported without the
-# real py-runner service. ScriptExecution nodes aren't exercised by these tests.
-if "sandbox_runner" not in sys.modules:
-    pkg = types.ModuleType("sandbox_runner")
-    client_mod = types.ModuleType("sandbox_runner.client")
-
-    class _PyRunnerClientStub:  # pragma: no cover - never invoked
-        def run(self, *args, **kwargs):  # noqa: D401
-            raise RuntimeError("sandbox_runner is stubbed in tests")
-
-    client_mod.PyRunnerClient = _PyRunnerClientStub
-    sys.modules["sandbox_runner"] = pkg
-    sys.modules["sandbox_runner.client"] = client_mod
+# Note: sandbox_runner is no longer stubbed here. Tests that need it should import directly.
+# ScriptNodeExecutor tests use mock_py_runner_client fixture.
 
 @pytest.fixture
 def mock_minio_client():
@@ -61,23 +50,18 @@ def mock_redis():
 @pytest.fixture
 def mock_py_runner_client():
     """Mock PyRunnerClient for ScriptNodeExecutor tests"""
-    with patch('sandbox_runner.client.PyRunnerClient') as mock_client:
-        mock_instance = MagicMock()
-        mock_client.return_value = mock_instance
-        yield mock_instance
+    import sandbox_runner.client as client_mod
+    mock_instance = MagicMock()
+    original = client_mod.PyRunnerClient
+    client_mod.PyRunnerClient = MagicMock(return_value=mock_instance)
+    yield mock_instance
+    client_mod.PyRunnerClient = original
 
 
 @pytest.fixture
 def test_chatbot():
-    """Test chatbot with sample graph and variables"""
+    """Test chatbot with sample graph"""
     return Chatbot(
-        id=1,
-        name="Test Bot",
-        variables=[
-            Variable(name="user_name", type="string"),
-            Variable(name="user_age", type="number"),
-            Variable(name="user_message", type="string"),
-        ],
         graph={
             "root": "node_1",
             "nodes": {
@@ -85,7 +69,10 @@ def test_chatbot():
                 "node_2": {"type": "set_message", "text": "Hello, {user_name}!", "next_node_id": "node_3"},
                 "node_3": {"type": "send_message", "next_node_id": None},
             }
-        }
+        },
+        subgraphs={},
+        bot_id=1,
+        bot_name="Test Bot"
     )
 
 
@@ -95,8 +82,13 @@ def test_execution_state():
     return ExecutionState(
         bot_id=1,
         execution_id=100,
-        executing_node_id="node_1",
-        variable_values={"user_name": "", "user_age": 0, "user_message": ""}
+        call_stack=[
+            Frame(
+                subgraph_name=None,
+                executing_node_id="node_1",
+                variable_values={"user_name": "", "user_age": 0, "user_message": ""}
+            )
+        ]
     )
 
 

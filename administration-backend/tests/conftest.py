@@ -288,7 +288,7 @@ def mock_config():
 @pytest.fixture
 def mock_minio_client():
     """Mock Minio client fixture."""
-    with patch('minio_controller.S3Client.Minio') as MockMinio:
+    with patch('backend.minio_controller.S3Client.Minio') as MockMinio:
         mock_client = MagicMock()
         MockMinio.return_value = mock_client
         mock_client.bucket_exists.return_value = True
