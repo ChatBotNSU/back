@@ -1,9 +1,0 @@
-{
-    "bot_id": 1,
-    "execution_id": 2,
-    "executing_node_id": "1",
-    "variable_values": {
-        "name": "John",
-        "age": 30
-    }
-}
