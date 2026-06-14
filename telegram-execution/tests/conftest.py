@@ -13,11 +13,13 @@ test.
 """
 
 from __future__ import annotations
+"""Pytest configuration for telegram-execution tests."""
 
 import sys
 from pathlib import Path
 
 import pytest
+from unittest.mock import MagicMock
 
 # Make src/ importable.
 SRC_DIR = Path(__file__).resolve().parents[1] / "src"
@@ -49,6 +51,7 @@ def fresh_modules(monkeypatch):
 
     # 2. Stub aiogram.Bot and Dispatcher.
     import aiogram
+    from aiogram import types
 
     class _StubBot:
         def __init__(self, token, **kwargs):
@@ -57,12 +60,20 @@ def fresh_modules(monkeypatch):
     class _StubDispatcher:
         def __init__(self, *args, **kwargs):
             self.handlers = []
+            self._message_decorator = MagicMock()
+            self._callback_decorator = MagicMock()
 
         def message(self):
             def decorator(fn):
                 self.handlers.append(fn)
                 return fn
-            return decorator
+            return self._message_decorator
+
+        def callback_query(self):
+            def decorator(fn):
+                self.handlers.append(fn)
+                return fn
+            return self._callback_decorator
 
         def resolve_used_update_types(self):
             return []
@@ -70,8 +81,12 @@ def fresh_modules(monkeypatch):
         async def start_polling(self, *args, **kwargs):
             return None
 
+    class _StubCallbackQuery:
+        pass
+
     monkeypatch.setattr(aiogram, "Bot", _StubBot)
     monkeypatch.setattr(aiogram, "Dispatcher", _StubDispatcher)
+    monkeypatch.setattr(types, "CallbackQuery", _StubCallbackQuery)
 
     # 3. The production code has a latent bug: `controller/__init__.py` calls
     # `asyncio.create_task(...)` at module-import time, which fails outside a
@@ -110,3 +125,5 @@ def fresh_modules(monkeypatch):
     for name in list(sys.modules):
         if name.startswith(("api", "controller", "poller", "sender", "models", "config", "main")):
             sys.modules.pop(name, None)
+src_path = Path(__file__).parent.parent / "src"
+sys.path.insert(0, str(src_path))
