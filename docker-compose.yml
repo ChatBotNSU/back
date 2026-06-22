@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: chatbot
+    ports:
+      - "${PG_PORT:-5432}:5432"   # exposed for local dev (uvicorn --reload)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"   # exposed for local dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres/chatbot
+      REDIS_URL: redis://redis:6379/0
+      API_KEYS: ${API_KEYS:-}
+      SECRETS_KEY: ${SECRETS_KEY:-}
+      BASE_URL: ${BASE_URL:-https://yourdomain.com}
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      YANDEX_API_KEY: ${YANDEX_API_KEY:-}
+      YANDEX_FOLDER_ID: ${YANDEX_FOLDER_ID:-}
+      RUN_MIGRATIONS: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build: .
+    command: ["arq", "worker.WorkerSettings"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres/chatbot
+      REDIS_URL: redis://redis:6379/0
+      SECRETS_KEY: ${SECRETS_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    # To run the `code` node in Docker-isolated mode, point the worker at a
+    # Docker socket-proxy (don't mount the raw socket — that's root-equivalent).
+    # Enable the dockerproxy service below and set:
+    #   environment:
+    #     CODE_SANDBOX_MODE: docker
+    #     DOCKER_HOST: tcp://dockerproxy:2375
+
+  # Restricted Docker API gateway for the sandbox (least-privilege).
+  # dockerproxy:
+  #   image: tecnativa/docker-socket-proxy
+  #   environment:
+  #     CONTAINERS: 1
+  #     POST: 1          # allow container create/start
+  #     IMAGES: 1
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  pgdata:
