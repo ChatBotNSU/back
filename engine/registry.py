@@ -42,6 +42,7 @@ def load_all_handlers() -> None:
     import handlers.intent           # noqa: F401
     import handlers.slot_fill        # noqa: F401
     import handlers.ai               # noqa: F401
+    import handlers.agent            # noqa: F401
     import handlers.transform        # noqa: F401
     import handlers.loop             # noqa: F401
     import handlers.http_call        # noqa: F401

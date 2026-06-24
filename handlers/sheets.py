@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from engine.registry import register
@@ -10,6 +11,17 @@ from models.session import Session
 from services import connections
 
 logger = logging.getLogger(__name__)
+
+
+def _render(value: Any, ctx: dict[str, Any]) -> Any:
+    """Recursively substitute {{var}} placeholders from session variables."""
+    if isinstance(value, str):
+        return re.sub(r"\{\{(.+?)\}\}", lambda m: str(ctx.get(m.group(1).strip(), m.group(0))), value)
+    if isinstance(value, list):
+        return [_render(v, ctx) for v in value]
+    if isinstance(value, dict):
+        return {k: _render(v, ctx) for k, v in value.items()}
+    return value
 
 
 class SheetsHandler:
@@ -38,9 +50,12 @@ class SheetsHandler:
         if impl is None:
             return self._stub(action, config)
 
+        ctx = {**session.variables, **data_in}
         try:
             return await impl.execute(
-                action, config.get("range", "A1"), config.get("values", []),
+                action,
+                _render(config.get("range", "A1"), ctx),
+                _render(config.get("values", []), ctx),
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Sheets %s failed: %s", action, exc)

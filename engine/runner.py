@@ -19,6 +19,7 @@ WAITING_NODES = {
     NodeType.WAIT,
     NodeType.HANDOFF,
     NodeType.SLOT_FILL,
+    NodeType.AGENT,
 }
 
 FlowLoader = Callable[[str], Awaitable[Flow | None]]

@@ -17,6 +17,7 @@ class NodeType(str, Enum):
     INTENT = "intent"
     SLOT_FILL = "slot_fill"
     AI = "ai"
+    AGENT = "agent"
     # Data
     TRANSFORM = "transform"
     LOOP = "loop"

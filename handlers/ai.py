@@ -7,6 +7,7 @@ from typing import Any
 from engine.registry import register
 from models.node import Node, NodeType
 from models.session import Session
+from services import llm
 
 
 def _render(template: str, variables: dict[str, Any]) -> str:
@@ -45,22 +46,14 @@ class AiHandler:
                 f"\n\nRespond ONLY with valid JSON matching this schema:\n{json.dumps(output_schema)}"
             )
 
+        # Route through the shared LLM service so the AI node honours the
+        # configured provider (YandexGPT / litellm). Falls back to a stub when
+        # no backend is available (e.g. in tests).
+        usage = {"prompt_tokens": 0, "completion_tokens": 0}
         try:
-            import litellm  # type: ignore
-            response = await litellm.acompletion(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-            )
-            raw = response.choices[0].message.content or ""
-            usage = {
-                "prompt_tokens": response.usage.prompt_tokens,
-                "completion_tokens": response.usage.completion_tokens,
-            }
-        except ImportError:
-            # Stub for testing without litellm
+            raw = await llm.acomplete(model, messages, temperature=temperature)
+        except llm.LLMUnavailable:
             raw = config.get("__test_response__", "stub response")
-            usage = {"prompt_tokens": 0, "completion_tokens": 0}
 
         result: Any = raw
         if output_schema:

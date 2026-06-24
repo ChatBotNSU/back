@@ -8,12 +8,24 @@ from models.node import Node, NodeType
 from models.session import Session
 
 
+def _lookup(key: str, variables: dict[str, Any]) -> Any:
+    """Resolve a flat or dotted key (e.g. `ai_result.result`) against vars."""
+    cur: Any = variables
+    for part in key.split("."):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return None
+    return cur
+
+
 def _render(template: Any, variables: dict[str, Any]) -> Any:
     if not isinstance(template, str):
         return template
     def replacer(match: re.Match) -> str:
         key = match.group(1).strip()
-        return str(variables.get(key, match.group(0)))
+        val = _lookup(key, variables)
+        return str(val) if val is not None else match.group(0)
     return re.sub(r"\{\{(.+?)\}\}", replacer, template)
 
 
