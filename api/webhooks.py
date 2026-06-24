@@ -341,9 +341,36 @@ async def _run_flow_bg(
         )
         return
 
+    # A configured `/command` trigger always wins: it interrupts any ongoing
+    # WAITING session and re-enters the flow from that trigger node. Lets one
+    # flow expose several entry points (e.g. /start, /help, /revenue).
+    from handlers.message_trigger import find_command_match
+    trigger_node = find_command_match(flow, user_text)
+
     loader = make_flow_loader(flows)
     try:
-        if existing and existing.state == SessionState.WAITING:
+        if trigger_node is not None:
+            session = Session(
+                flow_id=flow_id, workspace_id=flow.workspace_id, project_id=flow.project_id
+            )
+            if existing is not None:
+                # Preserve session_id so the bot:chat mapping stays stable.
+                session.id = existing.id
+                # Carry user-collected variables across the command boundary so
+                # /revenue can still see {name}, {currency}, etc. set during
+                # /start. Drop runtime-control and per-node state (starts with __).
+                session.variables.update({
+                    k: v for k, v in existing.variables.items() if not k.startswith("__")
+                })
+                # Keep the running message log so Demo's incremental render
+                # stays in sync; production adapters fire on append, not replay.
+                if "__messages__" in existing.variables:
+                    session.variables["__messages__"] = list(existing.variables["__messages__"])
+            session.variables.update(init_vars)
+            session = await start_flow(
+                session, flow, flow_loader=loader, entry_node=trigger_node.id
+            )
+        elif existing and existing.state == SessionState.WAITING:
             session = await resume_flow(existing, flow, user_text, flow_loader=loader)
         else:
             session = Session(
@@ -361,12 +388,42 @@ async def _run_flow_bg(
         return
 
     await sessions.save(session)
+    await _persist_shared_vars(flows, flow, session)
     metrics.record_flow(session.state.value)
     if session.state == SessionState.ERROR:
         await _record_dead_letter(
             dlq, flow_id=flow_id, session=session,
             error=session.error or "unknown", kind="flow_error",
         )
+
+
+async def _persist_shared_vars(
+    flows: FlowStoreDep, flow: Any, session: Session
+) -> None:
+    """Copy user-collected variables from a finished session into
+    flow.metadata['__shared_vars__'] so future cron / fresh-command sessions
+    can preload them. Skipped while the session is still WAITING — partial
+    state would leak half-collected slots into the global pool.
+    """
+    if session.state not in (SessionState.DONE, SessionState.ERROR):
+        return
+    new_shared = {
+        k: v for k, v in session.variables.items()
+        if not k.startswith("__") and k not in {"text", "channel", "chat_id", "user_id"}
+    }
+    if not new_shared:
+        return
+    try:
+        existing = flow.metadata.get("__shared_vars__") or {}
+        if not isinstance(existing, dict):
+            existing = {}
+        merged = {**existing, **new_shared}
+        if merged == existing:
+            return  # nothing actually changed
+        flow.metadata["__shared_vars__"] = merged
+        await flows.save(flow)
+    except Exception:  # noqa: BLE001
+        logger.warning("Failed to persist shared vars for flow %s", flow.id, exc_info=True)
 
 
 async def _resume_bg(

@@ -74,6 +74,8 @@ class FlowRunResponse(BaseModel):
     messages: list[dict[str, Any]]
     slot_question: str | None = None
     error: str | None = None
+    # Per-node failures surfaced for the Demo UI (e.g. Sheets misconfig).
+    node_errors: list[dict[str, str]] = []
 
 
 class FlowUpdate(BaseModel):
@@ -387,7 +389,35 @@ async def run_flow_demo(
         if session and session.workspace_id != workspace:
             session = None
 
-    if session and session.state == SessionState.WAITING:
+    # Command triggers preempt any ongoing WAITING — same model as production
+    # webhooks. Lets users test /start, /help, etc. from the Demo chat.
+    from handlers.message_trigger import find_command_match
+    trigger_node = find_command_match(flow, body.message)
+
+    if trigger_node is not None:
+        new_session = Session(
+            flow_id=flow.id, workspace_id=workspace, project_id=flow.project_id,
+        )
+        if session is not None:
+            new_session.id = session.id  # keep session_id stable for the UI
+            # Carry user data across the command boundary (drop internal __* keys).
+            new_session.variables.update({
+                k: v for k, v in session.variables.items() if not k.startswith("__")
+            })
+            # Preserve the message log so the Demo incremental render keeps
+            # working; channel adapters in production only fire on append.
+            if "__messages__" in session.variables:
+                new_session.variables["__messages__"] = list(session.variables["__messages__"])
+        new_session.variables.update({
+            "text": body.message,
+            "channel": "demo",
+            "user_id": "demo",
+            "__session_key__": f"demo:{flow.id}",
+        })
+        session = await start_flow(
+            new_session, flow, flow_loader=loader, entry_node=trigger_node.id,
+        )
+    elif session and session.state == SessionState.WAITING:
         session = await resume_flow(session, flow, body.message, flow_loader=loader)
     else:
         session = Session(flow_id=flow.id, workspace_id=workspace, project_id=flow.project_id)
@@ -400,6 +430,28 @@ async def run_flow_demo(
         session = await start_flow(session, flow, flow_loader=loader)
 
     await sessions.save(session)
+    # Persist user-collected vars on flow.metadata so future cron / fresh
+    # command-trigger sessions can preload them (shared global state).
+    if session.state in (SessionState.DONE, SessionState.ERROR):
+        new_shared = {
+            k: v for k, v in session.variables.items()
+            if not k.startswith("__")
+            and k not in {"text", "channel", "chat_id", "user_id"}
+        }
+        existing = flow.metadata.get("__shared_vars__") or {}
+        if not isinstance(existing, dict):
+            existing = {}
+        merged = {**existing, **new_shared}
+        if merged != existing:
+            flow.metadata["__shared_vars__"] = merged
+            await flows.save(flow)
+    # Scan node_outputs for handler-level errors (ok==False with a message) so
+    # the Demo UI can show actionable feedback — e.g. a Sheets misconfiguration.
+    node_errors: list[dict[str, str]] = []
+    for nid, out in session.node_outputs.items():
+        if isinstance(out, dict) and out.get("ok") is False and out.get("error"):
+            node_errors.append({"node": nid, "error": str(out["error"])})
+
     return FlowRunResponse(
         session_id=session.id,
         state=session.state,
@@ -408,4 +460,5 @@ async def run_flow_demo(
         messages=session.variables.get("__messages__", []),
         slot_question=session.variables.get("__slot_question__"),
         error=session.error,
+        node_errors=node_errors,
     )

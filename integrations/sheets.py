@@ -47,10 +47,7 @@ class GoogleSheetsProvider:
             if action == "read":
                 resp = await client.get(url, headers=self._headers)
                 data = resp.json()
-                return {
-                    "provider": self.name, "action": action,
-                    "ok": resp.status_code < 400, "rows": data.get("values", []), "raw": data,
-                }
+                return self._result(action, resp.status_code, data, data.get("values", []))
             if action == "update":
                 resp = await client.put(
                     url, params={"valueInputOption": "RAW"},
@@ -62,13 +59,40 @@ class GoogleSheetsProvider:
                     json={"values": values or []}, headers=self._headers,
                 )
             data = resp.json()
-            return {
-                "provider": self.name, "action": action,
-                "ok": resp.status_code < 400, "rows": values or [], "raw": data,
-            }
+            return self._result(action, resp.status_code, data, values or [])
         finally:
             if owned:
                 await client.aclose()
+
+    def _result(
+        self,
+        action: str,
+        status: int,
+        data: dict[str, Any],
+        rows: list[list[Any]],
+    ) -> dict[str, Any]:
+        ok = status < 400
+        out: dict[str, Any] = {
+            "provider": self.name, "action": action,
+            "ok": ok, "rows": rows, "raw": data,
+        }
+        if not ok:
+            # Surface Google's nested error message at the top level so the
+            # Demo UI (and node_errors scanner) shows something actionable
+            # rather than a generic "ok: false".
+            err = data.get("error") if isinstance(data, dict) else None
+            if isinstance(err, dict):
+                code = err.get("code", status)
+                message = err.get("message", "")
+                hint = ""
+                if status == 404:
+                    hint = " — проверь spreadsheet_id и что таблица доступна SA-аккаунту"
+                elif status == 403:
+                    hint = " — добавь client_email сервис-аккаунта в Share таблицы как Editor"
+                out["error"] = f"google sheets {code}: {message}{hint}"
+            else:
+                out["error"] = f"google sheets HTTP {status}"
+        return out
 
 
 def build_provider(

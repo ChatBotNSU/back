@@ -12,6 +12,7 @@ litellm>=1.40.0
 python-dotenv>=1.0.0
 alembic>=1.13.0
 cryptography>=42.0.0
+croniter>=2.0.0
 prometheus-client>=0.20.0
 # Optional: error tracking — set SENTRY_DSN to enable.
 # sentry-sdk>=2.0.0

@@ -22,6 +22,7 @@ from engine.registry import load_all_handlers
 from stores.bot_store import InMemoryBotStore, SQLBotStore
 from stores.flow_store import InMemoryFlowStore, SQLFlowStore
 from services import metrics
+from services.cron_scheduler import CronScheduler
 from services.logging_config import configure_logging, request_id_var
 from services.secrets import get_cipher, set_active_store as set_active_secret_store
 from stores.dead_letter import InMemoryDeadLetterStore, RedisDeadLetterStore
@@ -110,7 +111,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.warning("ARQ unavailable (%s) — background tasks used instead", exc)
         app.state.arq_pool = None
 
+    # ── Cron scheduler ─────────────────────────────────────────────────────────
+    scheduler = CronScheduler(
+        flow_store=app.state.flow_store,
+        session_store=app.state.session_store,
+    )
+    scheduler.start()
+    app.state.cron_scheduler = scheduler
+
     yield
+
+    await scheduler.stop()
     logger.info("Shutting down")
 
 

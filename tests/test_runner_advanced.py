@@ -165,6 +165,173 @@ class TestSubgraph:
         assert "p2" in session.node_outputs
 
 
+# ─── Subgraph isolation (function-call semantics) ────────────────────────────
+
+class TestSubgraphIsolation:
+    """An isolated subgraph (input_mapping/output_mapping set, or
+    isolated=true) gets a fresh variable scope: it cannot read parent vars
+    that weren't explicitly mapped in, and its own vars don't leak to the
+    parent unless explicitly mapped out."""
+
+    @staticmethod
+    def _make_pair(parent_subgraph_config: dict):
+        child = Flow(
+            id="child-flow",
+            start_node="c1",
+            nodes={
+                # Reads child-local input `child_name`, writes a derived
+                # `child_secret` that should NOT leak unless mapped out.
+                "c1": Node(
+                    id="c1",
+                    type=NodeType.TRANSFORM,
+                    config={
+                        "mappings": [
+                            {"from": "{{child_name}}", "to": "child_secret"},
+                            {"from": "leaked-from-child", "to": "child_garbage"},
+                        ],
+                    },
+                    exec_out=ExecOut(fallback="c2"),
+                ),
+                "c2": Node(id="c2", type=NodeType.END),
+            },
+        )
+        parent = simple_flow(
+            Node(
+                id="p1",
+                type=NodeType.SUBGRAPH,
+                config={"flow_id": "child-flow", **parent_subgraph_config},
+                exec_out=ExecOut(fallback="p2"),
+            ),
+            Node(id="p2", type=NodeType.END),
+        )
+        all_flows = {child.id: child, parent.id: parent}
+
+        async def loader(fid: str) -> Flow | None:
+            return all_flows.get(fid)
+
+        return parent, loader
+
+    async def test_input_mapping_writes_only_into_child(self):
+        parent, loader = self._make_pair({
+            "input_mapping": {"child_name": "{{parent_name}}"},
+        })
+        session = make_session()
+        session.variables["parent_name"] = "Alice"
+        session.variables["parent_secret"] = "do-not-leak"
+
+        session = await start_flow(session, parent, flow_loader=loader)
+
+        # Parent's vars are intact; child-only vars never bled back.
+        assert session.state == SessionState.DONE
+        assert session.variables.get("parent_name") == "Alice"
+        assert session.variables.get("parent_secret") == "do-not-leak"
+        assert "child_name" not in session.variables
+        assert "child_secret" not in session.variables
+        assert "child_garbage" not in session.variables
+
+    async def test_output_mapping_copies_named_vars_back(self):
+        parent, loader = self._make_pair({
+            "input_mapping": {"child_name": "{{parent_name}}"},
+            "output_mapping": {"child_secret": "result"},
+        })
+        session = make_session()
+        session.variables["parent_name"] = "Bob"
+        session = await start_flow(session, parent, flow_loader=loader)
+
+        assert session.state == SessionState.DONE
+        # Mapped output is copied under the parent-side alias.
+        assert session.variables.get("result") == "Bob"
+        # Unmapped child var (`child_garbage`) does not leak.
+        assert "child_garbage" not in session.variables
+        # Child-local var is gone (only `result` survives).
+        assert "child_secret" not in session.variables
+
+    async def test_child_cannot_see_unmapped_parent_var(self):
+        # No input_mapping for `parent_secret` → child can't read it; tries
+        # to copy and gets None.
+        child = Flow(
+            id="child-leak-probe",
+            start_node="c1",
+            nodes={
+                "c1": Node(
+                    id="c1",
+                    type=NodeType.TRANSFORM,
+                    config={
+                        "mappings": [{"from": "{{parent_secret}}", "to": "stolen"}],
+                    },
+                    exec_out=ExecOut(fallback="c2"),
+                ),
+                "c2": Node(id="c2", type=NodeType.END),
+            },
+        )
+        parent = simple_flow(
+            Node(
+                id="p1",
+                type=NodeType.SUBGRAPH,
+                config={
+                    "flow_id": "child-leak-probe",
+                    "isolated": True,
+                    "output_mapping": {"stolen": "stolen_back"},
+                },
+                exec_out=ExecOut(fallback="p2"),
+            ),
+            Node(id="p2", type=NodeType.END),
+        )
+        all_flows = {child.id: child, parent.id: parent}
+
+        async def loader(fid: str) -> Flow | None:
+            return all_flows.get(fid)
+
+        session = make_session()
+        session.variables["parent_secret"] = "shhh"
+        session = await start_flow(session, parent, flow_loader=loader)
+
+        # Parent's secret survives.
+        assert session.variables.get("parent_secret") == "shhh"
+        # Child rendered {{parent_secret}} against its own (empty) scope, so the
+        # template didn't resolve — `stolen` ends up as the un-rendered literal.
+        assert session.variables.get("stolen_back") == "{{parent_secret}}"
+
+    async def test_legacy_shared_scope_still_works(self):
+        # No isolated flag, no mappings → old shared-vars behavior. Child can
+        # read parent vars and write into the shared dict.
+        child = Flow(
+            id="legacy-child",
+            start_node="c1",
+            nodes={
+                "c1": Node(
+                    id="c1",
+                    type=NodeType.TRANSFORM,
+                    config={
+                        "mappings": [{"from": "{{parent_name}}", "to": "echo"}],
+                    },
+                    exec_out=ExecOut(fallback="c2"),
+                ),
+                "c2": Node(id="c2", type=NodeType.END),
+            },
+        )
+        parent = simple_flow(
+            Node(
+                id="p1",
+                type=NodeType.SUBGRAPH,
+                config={"flow_id": "legacy-child"},
+                exec_out=ExecOut(fallback="p2"),
+            ),
+            Node(id="p2", type=NodeType.END),
+        )
+        all_flows = {child.id: child, parent.id: parent}
+
+        async def loader(fid: str) -> Flow | None:
+            return all_flows.get(fid)
+
+        session = make_session()
+        session.variables["parent_name"] = "Carol"
+        session = await start_flow(session, parent, flow_loader=loader)
+
+        # Shared scope: the child's `echo` is now visible from the parent.
+        assert session.variables.get("echo") == "Carol"
+
+
 # ─── Loop ─────────────────────────────────────────────────────────────────────
 
 class TestLoop:

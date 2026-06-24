@@ -32,3 +32,6 @@ _*.db
 .idea/
 .vscode/
 .DS_Store
+
+*.log
+_fix_sa_secret.py

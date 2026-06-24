@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from copy import deepcopy
 from typing import Any, Awaitable, Callable
@@ -88,6 +89,14 @@ async def run_step(
     if output_var:
         session.variables[output_var] = data_out
 
+    # 4a. Halt sentinel — any handler may return __halt__ to end the session
+    # immediately (e.g. message_trigger when the command doesn't match).
+    if data_out.get("__halt__"):
+        session.state = SessionState.DONE
+        session.current_node = None
+        session.touch()
+        return session
+
     # 4. Waiting nodes pause the loop
     if node.type in WAITING_NODES and data_out.get("__waiting__"):
         session.state = SessionState.WAITING
@@ -128,6 +137,57 @@ async def run_step(
     return session
 
 
+# Variables auto-forwarded into an isolated subflow scope. These are the
+# transport-level fields a child flow needs to send messages back to the user
+# and resume correctly across webhook calls — never the parent's business data.
+_SYSTEM_VARS = {
+    "channel", "chat_id", "user_id", "__bot_token__", "__session_key__",
+    "text", "attachments", "user_meta",
+}
+
+
+def _is_isolated_subgraph(node: Any) -> bool:
+    cfg = node.config
+    if cfg.get("isolated"):
+        return True
+    if cfg.get("input_mapping"):
+        return True
+    if cfg.get("output_mapping"):
+        return True
+    return False
+
+
+def _render_template(value: Any, variables: dict[str, Any]) -> Any:
+    """Render a `{{var}}` template against parent variables.
+
+    - A string that is *exactly* `{{name}}` returns the raw value (preserves
+      type — dict/list/number/bool round-trip without stringification).
+    - A string with embedded templates is rendered field-by-field as text.
+    - Non-strings are returned as-is (literal config values).
+    """
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    if stripped.startswith("{{") and stripped.endswith("}}") and "{{" not in stripped[2:-2]:
+        key = stripped[2:-2].strip()
+        return _nested_lookup(key, variables)
+    def replacer(match: "re.Match[str]") -> str:
+        key = match.group(1).strip()
+        val = _nested_lookup(key, variables)
+        return str(val) if val is not None else match.group(0)
+    return re.sub(r"\{\{(.+?)\}\}", replacer, value)
+
+
+def _nested_lookup(key: str, variables: dict[str, Any]) -> Any:
+    cur: Any = variables
+    for part in key.split("."):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return None
+    return cur
+
+
 async def _enter_subgraph(
     session: Session,
     parent_flow: Flow,
@@ -156,10 +216,67 @@ async def _enter_subgraph(
     else:
         session.call_stack.append(f"{parent_flow.id}|__end__")
 
+    # Set up variable scope. In isolated mode the parent's vars are snapshot
+    # and replaced with a fresh dict built from system passthroughs + mapped
+    # inputs. Legacy mode keeps the shared dict. var_stack stays aligned with
+    # call_stack — None entries mark legacy frames.
+    if _is_isolated_subgraph(node):
+        parent_vars = deepcopy(session.variables)
+        session.var_stack.append({
+            "parent_vars": parent_vars,
+            "output_mapping": dict(node.config.get("output_mapping") or {}),
+        })
+
+        child_vars: dict[str, Any] = {
+            k: deepcopy(parent_vars[k]) for k in _SYSTEM_VARS if k in parent_vars
+        }
+        # __messages__ is shared by reference so messages sent from the subflow
+        # land directly in the parent's outbox (consistent with shared mode).
+        if "__messages__" in parent_vars:
+            child_vars["__messages__"] = parent_vars["__messages__"]
+
+        for input_name, template in (node.config.get("input_mapping") or {}).items():
+            child_vars[input_name] = _render_template(template, parent_vars)
+
+        session.variables = child_vars
+    else:
+        session.var_stack.append(None)
+
     session.current_node = subflow.start_node
+    session.current_flow_id = subflow.id
     session.state = SessionState.RUNNING
     session.touch()
     return await run_step(session, subflow, flow_loader)
+
+
+def _restore_parent_scope(session: Session) -> None:
+    """Restore parent variables and apply output_mapping when returning from
+    an isolated subgraph. Pops one entry from var_stack (kept in sync with
+    call_stack). For legacy frames (None / missing) this is a no-op.
+    """
+    if not session.var_stack:
+        return
+    frame = session.var_stack.pop()
+    if frame is None:
+        return
+    child_vars = session.variables
+    parent_vars: dict[str, Any] = frame.get("parent_vars") or {}
+    output_mapping: dict[str, str] = frame.get("output_mapping") or {}
+    for child_name, parent_name in output_mapping.items():
+        if not parent_name:
+            continue
+        parent_vars[parent_name] = child_vars.get(child_name)
+    # Forward outbox to parent. At entry we aliased child_vars["__messages__"]
+    # with parent_vars["__messages__"] (same list ref), so child always carries
+    # the full parent prefix plus any messages queued inside the subflow.
+    # A JSON save/load cycle in between WAITING + resume turns the alias into
+    # two equal-but-separate lists, so extending here would double everything
+    # that was already in parent at entry time. Replacing parent with a fresh
+    # copy of child is correct in both cases.
+    child_messages = child_vars.get("__messages__")
+    if isinstance(child_messages, list):
+        parent_vars["__messages__"] = list(child_messages)
+    session.variables = parent_vars
 
 
 async def _pop_call_stack(
@@ -168,6 +285,7 @@ async def _pop_call_stack(
     flow_loader: FlowLoader | None,
 ) -> Session:
     frame = session.call_stack.pop()
+    _restore_parent_scope(session)
 
     if "|" in frame:
         parent_flow_id, return_node = frame.split("|", 1)
@@ -182,6 +300,7 @@ async def _pop_call_stack(
 
         if parent_flow_id == current_flow.id:
             session.current_node = return_node
+            session.current_flow_id = current_flow.id
             session.state = SessionState.RUNNING
             session.touch()
             return await run_step(session, current_flow, flow_loader)
@@ -200,6 +319,7 @@ async def _pop_call_stack(
             return session
 
         session.current_node = return_node
+        session.current_flow_id = parent_flow.id
         session.state = SessionState.RUNNING
         session.touch()
         return await run_step(session, parent_flow, flow_loader)
@@ -278,14 +398,25 @@ async def start_flow(
     session: Session,
     flow: Flow,
     flow_loader: FlowLoader | None = None,
+    entry_node: str | None = None,
 ) -> Session:
-    if flow.start_node is None:
+    """Start a flow from `entry_node` (a trigger node id) or, when not given,
+    from the flow's configured `start_node`. The trigger model lets one flow
+    have several entry points — message commands and cron ticks each land on
+    their own node and run their own branch."""
+    target = entry_node or flow.start_node
+    if target is None:
         session.state = SessionState.ERROR
         session.error = "Flow has no start_node"
         return session
+    if target not in flow.nodes:
+        session.state = SessionState.ERROR
+        session.error = f"Entry node {target!r} not found in flow {flow.id!r}"
+        return session
 
     session.state = SessionState.RUNNING
-    session.current_node = flow.start_node
+    session.current_node = target
+    session.current_flow_id = flow.id
     session.steps_count = 0
     session.touch()
     return await run_step(session, flow, flow_loader)
@@ -300,7 +431,20 @@ async def resume_flow(
     if session.state != SessionState.WAITING:
         raise ValueError(f"Cannot resume session in state {session.state!r}")
 
+    # When the session paused inside a subgraph, the current node lives in a
+    # *child* flow, not the root we were called with. Re-resolve the actual
+    # flow via the loader so run_step sees the right `nodes` dict.
+    target_flow = flow
+    if (
+        session.current_flow_id
+        and session.current_flow_id != flow.id
+        and flow_loader is not None
+    ):
+        loaded = await flow_loader(session.current_flow_id)
+        if loaded is not None:
+            target_flow = loaded
+
     session.variables["__pending_input__"] = user_message
     session.state = SessionState.RUNNING
     session.touch()
-    return await run_step(session, flow, flow_loader)
+    return await run_step(session, target_flow, flow_loader)
