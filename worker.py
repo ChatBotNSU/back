@@ -9,6 +9,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from arq.connections import RedisSettings
+
 from config import settings
 from tasks import run_flow_task
 
@@ -57,7 +59,6 @@ class WorkerSettings:
     job_timeout = 300  # 5 min max per flow run
     keep_result = 86_400  # keep job result for 24h
 
-    @staticmethod
-    def redis_settings():
-        from arq.connections import RedisSettings  # type: ignore
-        return RedisSettings.from_dsn(settings.redis_url)
+    # ARQ reads this as a RedisSettings *instance* (it accesses `.host` etc.),
+    # so it must be the value, not a method returning it.
+    redis_settings = RedisSettings.from_dsn(settings.redis_url)

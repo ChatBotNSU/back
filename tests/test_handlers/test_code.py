@@ -70,7 +70,8 @@ class TestCodeHandler:
         assert out["result"] is None
         assert out["error"] is not None
 
-    async def test_js_returns_stub(self):
-        out = await _run({"language": "js", "source": "x=1"})
-        assert out["result"] is None
-        assert "JS" in out["error"]
+    async def test_language_is_ignored_runs_python(self):
+        # `language` is legacy/no-op now — the node always runs Python.
+        out = await _run({"language": "js", "source": "__result__ = 1 + 1"})
+        assert out["result"] == 2
+        assert out["error"] is None

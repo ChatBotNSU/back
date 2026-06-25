@@ -57,8 +57,12 @@ def _matches(condition: ExecCondition, value: Any) -> bool:
         return value != condition.neq
     if condition.gt is not None:
         return value is not None and value > condition.gt
+    if condition.gte is not None:
+        return value is not None and value >= condition.gte
     if condition.lt is not None:
         return value is not None and value < condition.lt
+    if condition.lte is not None:
+        return value is not None and value <= condition.lte
     if condition.contains is not None:
         if isinstance(value, str):
             return condition.contains in value
@@ -71,6 +75,8 @@ def _matches(condition: ExecCondition, value: Any) -> bool:
         return (value is None) == condition.not_exists
     if condition.in_ is not None:
         return value in condition.in_
+    if condition.not_in is not None:
+        return value not in condition.not_in
     return False
 
 

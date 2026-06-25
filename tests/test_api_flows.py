@@ -225,3 +225,47 @@ class TestFlowVersions:
         created = client.post("/api/flows", json=SIMPLE_FLOW).json()
         assert client.get(f"/api/flows/{created['id']}/versions/99").status_code == 404
         assert client.get("/api/flows/ghost/versions/1").status_code == 404
+
+
+class TestDataflowPersistence:
+    """Regression: node `data_in` / `data_out` ports must survive create and
+    update. They were silently dropped by `_nodes_from_input`, which broke
+    `data_in.from_` wiring (the value resolved to None at runtime)."""
+
+    DATAFLOW_FLOW = {
+        "name": "dataflow",
+        "start_node": "fetch",
+        "nodes": [
+            {
+                "id": "fetch",
+                "type": "http_call",
+                "config": {"method": "GET", "url": "https://example.com"},
+                "exec_out": {"conditions": [], "fallback": "say"},
+            },
+            {
+                "id": "say",
+                "type": "send_message",
+                "data_in": {"profile": {"from": "fetch.response"}},
+                "data_out": {"greeting": "text"},
+                "config": {"text": "{{profile.user.name}}"},
+            },
+        ],
+    }
+
+    def test_data_in_out_round_trip_on_create(self, client):
+        created = client.post("/api/flows", json=self.DATAFLOW_FLOW)
+        assert created.status_code == 201
+        flow = client.get(f"/api/flows/{created.json()['id']}").json()
+        say = next(n for n in flow["nodes"] if n["id"] == "say")
+        assert say["data_in"]["profile"]["from"] == "fetch.response"
+        assert say["data_out"] == {"greeting": "text"}
+
+    def test_data_in_out_round_trip_on_update(self, client):
+        created = client.post("/api/flows", json=SIMPLE_FLOW).json()
+        resp = client.put(
+            f"/api/flows/{created['id']}",
+            json={"nodes": self.DATAFLOW_FLOW["nodes"], "start_node": "fetch"},
+        )
+        assert resp.status_code == 200
+        say = next(n for n in resp.json()["nodes"] if n["id"] == "say")
+        assert say["data_in"]["profile"]["from"] == "fetch.response"

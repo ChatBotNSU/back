@@ -9,11 +9,29 @@ from models.node import Node, NodeType
 from models.session import Session
 
 
+def _lookup(key: str, ctx: dict[str, Any]) -> Any:
+    """Resolve a flat or dotted key (e.g. `api.response.user.name`) against ctx."""
+    cur: Any = ctx
+    for part in key.split("."):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return None
+    return cur
+
+
 def _render(value: Any, ctx: dict[str, Any]) -> Any:
     if isinstance(value, str):
+        stripped = value.strip()
+        # Exact single-template string preserves the resolved value's type, so a
+        # body can carry a nested object/list/number from a prior response, not
+        # just its string form (e.g. {"user": "{{api.response.user}}"}).
+        if stripped.startswith("{{") and stripped.endswith("}}") and "{{" not in stripped[2:-2]:
+            resolved = _lookup(stripped[2:-2].strip(), ctx)
+            return resolved if resolved is not None else value
         def replacer(m: re.Match) -> str:
-            key = m.group(1).strip()
-            return str(ctx.get(key, m.group(0)))
+            resolved = _lookup(m.group(1).strip(), ctx)
+            return str(resolved) if resolved is not None else m.group(0)
         return re.sub(r"\{\{(.+?)\}\}", replacer, value)
     if isinstance(value, dict):
         return {k: _render(v, ctx) for k, v in value.items()}

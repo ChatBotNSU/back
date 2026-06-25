@@ -44,11 +44,14 @@ class ExecCondition(BaseModel):
     eq: Any = None
     neq: Any = None
     gt: Any = None
+    gte: Any = None
     lt: Any = None
+    lte: Any = None
     contains: Any = None
     exists: bool | None = None
     not_exists: bool | None = None
     in_: list[Any] | None = Field(default=None, alias="in")
+    not_in: list[Any] | None = None
     goto: str
 
     model_config = {"populate_by_name": True}

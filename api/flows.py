@@ -149,6 +149,8 @@ def _nodes_from_input(nodes_in: list[NodeIn]) -> dict[str, Node]:
             id=n.id,
             type=n.type,
             label=n.label,
+            data_in=raw.get("data_in", {}),  # {field: {"from": "node.key"}}
+            data_out=raw.get("data_out", {}),
             config=n.config,
             exec_out=ExecOut(**exec_out_raw) if exec_out_raw else ExecOut(),
             position=n.position,  # type: ignore[arg-type]

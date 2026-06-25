@@ -31,6 +31,31 @@ async def _to_dead_letter(ctx: dict[str, Any], entry: DeadLetterEntry) -> None:
         logger.exception("Failed to write dead-letter entry")
 
 
+async def _persist_shared_vars(flow_store: Any, flow: Any, session: Session) -> None:
+    """Copy user-collected vars from a finished session into
+    flow.metadata['__shared_vars__'] so cron / fresh-command sessions can
+    preload them. Mirror of api/webhooks._persist_shared_vars."""
+    if session.state not in (SessionState.DONE, SessionState.ERROR):
+        return
+    new_shared = {
+        k: v for k, v in session.variables.items()
+        if not k.startswith("__") and k not in {"text", "channel", "chat_id", "user_id"}
+    }
+    if not new_shared:
+        return
+    try:
+        existing = flow.metadata.get("__shared_vars__") or {}
+        if not isinstance(existing, dict):
+            existing = {}
+        merged = {**existing, **new_shared}
+        if merged == existing:
+            return
+        flow.metadata["__shared_vars__"] = merged
+        await flow_store.save(flow)
+    except Exception:  # noqa: BLE001
+        logger.warning("Failed to persist shared vars for flow %s", flow.id, exc_info=True)
+
+
 async def run_flow_task(
     ctx: dict[str, Any],
     *,
@@ -59,17 +84,38 @@ async def run_flow_task(
         ))
         return
 
+    # A configured `/command` trigger wins: it interrupts any WAITING session and
+    # re-enters the flow from that trigger node. Mirrors api/webhooks._run_flow_bg
+    # so behaviour is identical whether a run is dispatched via ARQ or inline.
+    from handlers.message_trigger import find_command_match
+    trigger_node = find_command_match(flow, user_text)
+
+    existing: Session | None = None
+    if session_id:
+        existing = await session_store.get(session_id)
+
     loader = make_flow_loader(flow_store)
     try:
-        if session_id:
-            session = await session_store.get(session_id)
-            if session is None:
-                logger.warning("run_flow_task: session %s not found", session_id)
+        if trigger_node is not None:
+            session = Session(
+                flow_id=flow_id, workspace_id=flow.workspace_id, project_id=flow.project_id
+            )
+            if existing is not None:
+                session.id = existing.id  # keep the bot:chat mapping stable
+                session.variables.update({
+                    k: v for k, v in existing.variables.items() if not k.startswith("__")
+                })
+                if "__messages__" in existing.variables:
+                    session.variables["__messages__"] = list(existing.variables["__messages__"])
+            session.variables.update(init_vars)
+            session = await start_flow(
+                session, flow, flow_loader=loader, entry_node=trigger_node.id
+            )
+        elif existing is not None:
+            if existing.state != SessionState.WAITING:
+                logger.warning("run_flow_task: session %s is not waiting (%s)", session_id, existing.state)
                 return
-            if session.state != SessionState.WAITING:
-                logger.warning("run_flow_task: session %s is not waiting (%s)", session_id, session.state)
-                return
-            session = await resume_flow(session, flow, user_text, flow_loader=loader)
+            session = await resume_flow(existing, flow, user_text, flow_loader=loader)
         else:
             session = Session(
                 flow_id=flow_id, workspace_id=flow.workspace_id, project_id=flow.project_id
@@ -85,6 +131,7 @@ async def run_flow_task(
         raise
 
     await session_store.save(session)
+    await _persist_shared_vars(flow_store, flow, session)
     metrics.record_flow(session.state.value)
     if session.state == SessionState.ERROR:
         await _to_dead_letter(ctx, DeadLetterEntry(

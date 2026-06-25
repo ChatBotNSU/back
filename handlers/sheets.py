@@ -15,10 +15,24 @@ from services.google_auth import GoogleAuthError, get_access_token, looks_like_s
 logger = logging.getLogger(__name__)
 
 
+def _lookup(key: str, ctx: dict[str, Any]) -> Any:
+    """Resolve a flat or dotted key (e.g. `agify.response.age`) against ctx."""
+    cur: Any = ctx
+    for part in key.split("."):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return None
+    return cur
+
+
 def _render(value: Any, ctx: dict[str, Any]) -> Any:
-    """Recursively substitute {{var}} placeholders from session variables."""
+    """Recursively substitute {{var}} placeholders, supporting dotted paths."""
     if isinstance(value, str):
-        return re.sub(r"\{\{(.+?)\}\}", lambda m: str(ctx.get(m.group(1).strip(), m.group(0))), value)
+        def repl(m: "re.Match[str]") -> str:
+            resolved = _lookup(m.group(1).strip(), ctx)
+            return str(resolved) if resolved is not None else m.group(0)
+        return re.sub(r"\{\{(.+?)\}\}", repl, value)
     if isinstance(value, list):
         return [_render(v, ctx) for v in value]
     if isinstance(value, dict):

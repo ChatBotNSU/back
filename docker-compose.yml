@@ -60,6 +60,12 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECRETS_KEY: ${SECRETS_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      # The worker runs the flows (AI / agent / slot LLM extraction), so it needs
+      # the same LLM credentials as the API — otherwise AI nodes fall back to stubs.
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      YANDEX_API_KEY: ${YANDEX_API_KEY:-}
+      YANDEX_FOLDER_ID: ${YANDEX_FOLDER_ID:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -91,35 +91,26 @@ class CodeHandler:
         session: Session,
         node: Node,
     ) -> dict[str, Any]:
-        language: str = config.get("language", "js")
         source: str = config.get("source", "")
         input_vars: list[str] = config.get("input_vars", [])
         timeout_ms: int = int(config.get("timeout_ms", 5000))
         memory_mb: int = int(config.get("memory_mb", _DEFAULT_MEMORY_MB))
 
-        if language == "python":
-            ctx = {**session.variables, **data_in}
-            local_vars = {k: ctx.get(k) for k in input_vars}
-            mode = config.get("sandbox") or settings.code_sandbox_mode
-            if mode == "docker" or (mode == "auto" and sandbox.docker_available()):
-                return await sandbox.run_python_docker(
-                    source, local_vars,
-                    image=settings.code_docker_image,
-                    memory_mb=memory_mb,
-                    cpus=settings.code_cpus,
-                    pids_limit=settings.code_pids_limit,
-                    timeout_ms=timeout_ms,
-                )
-            return await self._run_python(
-                source, input_vars, data_in, session, timeout_ms, memory_mb
+        ctx = {**session.variables, **data_in}
+        local_vars = {k: ctx.get(k) for k in input_vars}
+        mode = config.get("sandbox") or settings.code_sandbox_mode
+        if mode == "docker" or (mode == "auto" and sandbox.docker_available()):
+            return await sandbox.run_python_docker(
+                source, local_vars,
+                image=settings.code_docker_image,
+                memory_mb=memory_mb,
+                cpus=settings.code_cpus,
+                pids_limit=settings.code_pids_limit,
+                timeout_ms=timeout_ms,
             )
-
-        # JS not supported in-process; return stub
-        return {
-            "result": None,
-            "error": "JS execution not supported server-side",
-            "duration_ms": 0,
-        }
+        return await self._run_python(
+            source, input_vars, data_in, session, timeout_ms, memory_mb
+        )
 
     async def _run_python(
         self,
